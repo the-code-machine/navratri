@@ -1,14 +1,14 @@
 // pages/index.tsx
-// ────────────────────────────────────────────────────────────────────────────
-//  माता बाग मंदिर कुरवाई — Navratri 2026
+// ─────────────────────────────────────────────────────────────────────────────
+//  माता बाग मंदिर कुरवाई  |  Navratri 2026  |  Final Version
 //
-//  SETUP:
-//    npm install lucide-react
+//  SETUP:  npm install lucide-react
 //
-//  GOOGLE SHEETS:
-//    1. Deploy APPS_SCRIPT.js as Google Apps Script Web App (Anyone access)
-//    2. Set SCRIPT_URL below
-// ────────────────────────────────────────────────────────────────────────────
+//  CONFIG:
+//    SCRIPT_URL   → Google Apps Script Web App URL
+//    PHONEPE_LINK → e.g. https://phon.pe/ru_XXXXXX
+//    UPI_ID       → e.g. matababag@ybl
+// ─────────────────────────────────────────────────────────────────────────────
 "use client";
 import Head from "next/head";
 import {
@@ -16,9 +16,8 @@ import {
   useEffect,
   useMemo,
   useCallback,
-  FC,
-  ReactNode,
   useRef,
+  ReactNode,
 } from "react";
 import {
   Search,
@@ -44,6 +43,10 @@ import {
   ChevronDown,
   AlertCircle,
   Info,
+  Download,
+  CreditCard,
+  QrCode,
+  Smartphone,
 } from "lucide-react";
 import type {
   Donor,
@@ -51,14 +54,52 @@ import type {
   AlphaMode,
   SeriesFilter,
   TypeFilter,
-} from "@/types/donor";
+} from "../types/donor";
 import { url } from "@/config";
 
-// ── CONFIG ───────────────────────────────────────────────────────────────────
-const SCRIPT_URL = url; // ← paste your Apps Script Web App URL here
-const PAGE_SIZE = 12; // cards shown per load
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SCRIPT_URL = url; // ← Google Apps Script Web App URL
+const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
+const UPI_ID = ""; // ← e.g. matababagmandir@ybl
+const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
+const PAGE_SIZE = 12;
 
-// ── DEMO DATA (matching actual API shape) ────────────────────────────────────
+// ── SPECIAL MENTION DONORS ────────────────────────────────────────────────────
+const SPECIAL_MENTIONS = [
+  "विशेष घृत ज्योति — श्री संजयवत्स जी (नई दिल्ली)",
+  "विशेष घृत ज्योति — श्री हरिसिंह जी सप्रे, विधायक एवं संरक्षक कुरवाई",
+];
+
+// ── DONATION TYPES WITH FIXED AMOUNTS ─────────────────────────────────────────
+const DONATION_TYPES = [
+  {
+    value: "tel-jyoti",
+    label: "तेल ज्योति",
+    amount: "701",
+    hint: "₹701/- निर्धारित",
+  },
+  {
+    value: "ghee-jyoti",
+    label: "घी ज्योति",
+    amount: "1801",
+    hint: "₹1,801/- निर्धारित",
+  },
+  {
+    value: "nirmaan",
+    label: "निर्माण कार्य हेतु",
+    amount: "",
+    hint: "राशि दर्ज करें",
+  },
+  {
+    value: "bhandara",
+    label: "भंडारा हेतु",
+    amount: "",
+    hint: "राशि दर्ज करें",
+  },
+  { value: "anya-dan", label: "अन्य दान", amount: "", hint: "राशि दर्ज करें" },
+];
+
+// ── DEMO DATA ─────────────────────────────────────────────────────────────────
 const DONORS_DEMO: Donor[] = [
   {
     id: "A1",
@@ -512,7 +553,7 @@ const DONORS_DEMO: Donor[] = [
     id: "A41",
     series: "A",
     jyotiNo: 41,
-    nameHindi: "श्री जितेेन्द्रसिंह दांगी",
+    nameHindi: "श्री जितेन्द्रसिंह दांगी",
     nameEnglish: "Shri Jitendrasingh Dangi (Sarpanch)",
     city: "Kankar",
     receipt: 918,
@@ -956,7 +997,7 @@ const HINDI_ALPHA = [
 ];
 const ENG_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-// ── TOAST ────────────────────────────────────────────────────────────────────
+// ── TOAST ─────────────────────────────────────────────────────────────────────
 type ToastType = "success" | "error" | "info";
 interface ToastItem {
   id: number;
@@ -969,39 +1010,167 @@ function useToast() {
   const show = useCallback((msg: string, type: ToastType = "info") => {
     const id = Date.now();
     setToasts((p) => [...p, { id, msg, type }]);
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4500);
   }, []);
   return { toasts, show };
 }
 
-const ToastIcon: FC<{ type: ToastType }> = ({ type }) => {
-  if (type === "success") return <CheckCircle size={16} />;
-  if (type === "error") return <AlertCircle size={16} />;
-  return <Info size={16} />;
-};
-
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
   if (!toasts.length) return null;
+  const icons: Record<ToastType, ReactNode> = {
+    success: <CheckCircle size={15} />,
+    error: <AlertCircle size={15} />,
+    info: <Info size={15} />,
+  };
   return (
     <div className="toast-wrap">
       {toasts.map((t) => (
         <div key={t.id} className={`toast toast-${t.type}`}>
-          <ToastIcon type={t.type} />
-          {t.msg}
+          {icons[t.type]} {t.msg}
         </div>
       ))}
     </div>
   );
 }
 
+// ── DIGITAL RECEIPT ───────────────────────────────────────────────────────────
+function openDigitalReceipt(donor: Donor): void {
+  const now = new Date();
+  const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>रसीद — ${donor.nameHindi}</title>
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit:ital@0;1&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f0ece4;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;font-family:'DM Sans',sans-serif}
+  .receipt{width:420px;max-width:100%;background:#FFF9EE;border:3px solid #8B1A1A;border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.2);overflow:hidden}
+  .top-strip{background:#8B1A1A;padding:.32rem .6rem;display:flex;justify-content:space-between;align-items:center}
+  .top-strip span{color:#FFD700;font-size:.62rem;letter-spacing:.06em;font-weight:700;font-family:'DM Sans',sans-serif}
+  .title-row{background:#FFF3E0;padding:.55rem .75rem .3rem;text-align:center;border-bottom:2px solid #8B1A1A}
+  .title-hi{font-family:'Tiro Devanagari Sanskrit',serif;font-size:1.2rem;color:#8B1A1A;font-weight:700;line-height:1.3}
+  .main-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem .7rem;border-bottom:2px dashed #C0892A;background:#FFF9EE;gap:.5rem}
+  .circle-badge{width:56px;height:56px;border-radius:50%;border:2.5px solid #8B1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;flex-shrink:0;padding:.2rem}
+  .circle-badge .cb-lbl{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.65rem;color:#8B1A1A;font-weight:700;line-height:1.2}
+  .circle-badge .cb-amt{font-family:'DM Sans',sans-serif;font-size:.65rem;color:#8B1A1A;font-weight:700}
+  .temple-center{text-align:center;flex:1;padding:0 .3rem}
+  .temple-name{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.95rem;color:#8B1A1A;font-weight:700;line-height:1.4}
+  .meta-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem .75rem;border-bottom:1px solid #E8D5A0;background:#FFFDF5}
+  .kra-wrap{display:flex;align-items:baseline;gap:.3rem}
+  .kra-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.7rem;color:#666}
+  .kra-num{font-family:'DM Sans',sans-serif;font-size:1.25rem;color:#8B1A1A;font-weight:700}
+  .date-wrap{text-align:right}
+  .date-label{font-size:.62rem;color:#666;font-family:'Tiro Devanagari Sanskrit',serif}
+  .date-val{font-size:.88rem;font-weight:700;color:#1a1a1a;font-family:'DM Sans',sans-serif}
+  .field-row{padding:.3rem .75rem;border-bottom:1px solid #EEE0C0;display:flex;align-items:baseline;gap:.35rem;background:#FFF9EE}
+  .f-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.65rem;color:#8B1A1A;font-weight:700;white-space:nowrap;flex-shrink:0}
+  .f-val{flex:1;border-bottom:1px dotted #8B1A1A;font-family:'Tiro Devanagari Sanskrit',serif;font-size:.88rem;color:#1a1a1a;padding-bottom:1px;min-height:1.45rem;display:flex;align-items:flex-end}
+  .amount-note{padding:.3rem .75rem;font-size:.65rem;color:#555;line-height:1.5;border-bottom:1px solid #EEE0C0;background:#FFFDF5;font-family:'DM Sans',sans-serif}
+  .thankyou{text-align:center;padding:.38rem .5rem;font-size:.75rem;color:#8B1A1A;font-weight:700;font-family:'Tiro Devanagari Sanskrit',serif;border-bottom:1px dashed #C0892A;background:#FFF3E0}
+  .sig-row{display:flex;justify-content:space-between;align-items:flex-end;padding:.55rem .75rem;background:#FFF9EE}
+  .sig-left{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.75rem;color:#8B1A1A;line-height:1.6}
+  .sig-right{text-align:right}
+  .sig-line{width:90px;border-bottom:1.5px solid #8B1A1A;margin-bottom:.2rem}
+  .sig-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.7rem;color:#8B1A1A}
+  .bot-strip{background:#8B1A1A;padding:.28rem .5rem;text-align:center;color:rgba(255,215,0,.85);font-size:.6rem;letter-spacing:.04em;font-family:'DM Sans',sans-serif}
+  .btn-row{display:flex;gap:.65rem;margin-top:.9rem;justify-content:center;flex-wrap:wrap}
+  .btn{padding:.6rem 1.4rem;border:none;border-radius:8px;font-size:.88rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:flex;align-items:center;gap:.4rem}
+  .btn-save{background:#8B1A1A;color:#fff}
+  .btn-close{background:#e5e7eb;color:#374151}
+  .btn:hover{opacity:.88}
+  @media print{body{background:#fff;padding:0;display:block}.btn-row,.no-print{display:none!important}.receipt{box-shadow:none;width:100%;max-width:none}}
+  @media(max-width:480px){.receipt{width:100%}}
+</style>
+</head>
+<body>
+<div class="receipt">
+  <div class="top-strip">
+    <span>जय माता दी</span><span>जय माँ भीतरासण</span><span>जय माता दी</span>
+  </div>
+  <div class="title-row">
+    <div class="title-hi">सर्वमनोकामना पूर्ति अखंड ज्योति</div>
+  </div>
+  <div class="main-row">
+    <div class="circle-badge">
+      <span class="cb-lbl">घृत</span>
+      <span class="cb-amt">1801/-</span>
+    </div>
+    <div class="temple-center">
+      <div class="temple-name">श्री माता बाग मंदिर कुरवाई</div>
+    </div>
+    <div class="circle-badge">
+      <span class="cb-lbl">तेल</span>
+      <span class="cb-amt">701/-</span>
+    </div>
+  </div>
+  <div class="meta-row">
+    <div class="kra-wrap">
+      <span class="kra-label">कं.</span>
+      <span class="kra-num">${donor.jyotiNo}</span>
+    </div>
+    <div class="date-wrap">
+      <div class="date-label">दिनांक</div>
+      <div class="date-val">${date}</div>
+    </div>
+  </div>
+  <div class="field-row">
+    <span class="f-label">सु/श्री/श्रीमति</span>
+    <span class="f-val">${donor.nameHindi}</span>
+  </div>
+  <div class="field-row" style="gap:.5rem">
+    <span class="f-label">शहर</span>
+    <span class="f-val" style="max-width:110px">${donor.city || "—"}</span>
+    <span class="f-label" style="margin-left:.5rem">मोबाइल नं.</span>
+    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.82rem">${donor.mobile || "—"}</span>
+  </div>
+  <div class="field-row">
+    <span class="f-label">रसीद नं.</span>
+    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.receipt}</span>
+    <span class="f-label" style="margin-left:.5rem">ज्योति क्र.</span>
+    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.jyotiNo}</span>
+  </div>
+  <div class="amount-note">
+    अन्य राशि (विवरण जैसे घृत, सामग्री, निर्माण कार्य, मंदिर, नवरात्र महोत्सव) ...
+    अन्य कार्य— <strong>${donor.amount ? "₹" + donor.amount.toLocaleString("hi-IN") + "/-" : "—"}</strong>
+  </div>
+  <div class="thankyou">!!मंदिर हेतु दान स्वरूप राशि सधन्यवाद प्राप्त किये!!</div>
+  <div class="sig-row">
+    <div class="sig-left">
+      <div>ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
+      <div style="margin-top:.2rem">ज्योति राशि — <strong>${donor.amount ? "₹" + donor.amount.toLocaleString("hi-IN") + "/-" : "—"}</strong></div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-line"></div>
+      <div class="sig-label">प्राप्त कर्ता</div>
+    </div>
+  </div>
+  <div class="bot-strip">navratri-psi.vercel.app &nbsp;·&nbsp; जय माता दी 🙏</div>
+</div>
+<div class="btn-row no-print">
+  <button class="btn btn-save" onclick="window.print()">📥 Save / Print</button>
+  <button class="btn btn-close" onclick="window.close()">✕ Close</button>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "width=500,height=740");
+  if (win) win.onload = () => URL.revokeObjectURL(url);
+}
+
 // ── FLOATING PETALS ───────────────────────────────────────────────────────────
 function FloatingPetals() {
-  const items = ["🌸", "🌺", "🌼", "🌻"].map((e, i) => ({
-    e,
-    left: `${i * 24 + 4}%`,
-    delay: `${i * 2.1}s`,
-    duration: `${10 + i * 1.5}s`,
-  }));
+  const items = [
+    { e: "🌸", l: "4%", d: "0s", t: "12s" },
+    { e: "🌺", l: "28%", d: "3.2s", t: "15s" },
+    { e: "🌼", l: "55%", d: "1.5s", t: "11s" },
+    { e: "🌻", l: "78%", d: "4.8s", t: "13s" },
+  ];
   return (
     <>
       {items.map((p, i) => (
@@ -1009,9 +1178,10 @@ function FloatingPetals() {
           key={i}
           className="petal"
           style={{
-            left: p.left,
-            animationDelay: p.delay,
-            animationDuration: p.duration,
+            left: p.l,
+            animationDelay: p.d,
+            animationDuration: p.t,
+            fontSize: "1rem",
           }}
         >
           {p.e}
@@ -1026,24 +1196,44 @@ function Header() {
   return (
     <header className="hdr">
       <div className="hdr-in">
-        {/* Replace with: <img src="/temple.jpg" alt="Mata Bag Mandir" /> */}
+        {/* Replace with: <img src="/temple.jpg" alt="Mata Bag" /> */}
         <div className="img-slot">
-          <img src="matarani.png" alt="" />
+          <img src="./matarani.png" alt="" />
         </div>
         <div className="ht">
           <h1 className="h1">माता बाग मंदिर कुरवाई</h1>
           <p className="h2">सर्व मनोकामना पूर्ति अखंड ज्योति सूची 2026</p>
         </div>
-        <div className="diya">
+        <div className="diya-wrap">
           <img src="./diya.png" alt="" width={50} height={50} />
         </div>
       </div>
       <div className="date-bar">
-        <Calendar size={13} color="rgba(255,248,220,.7)" />
+        <Calendar size={13} />
         गुरूवार 19 मार्च 2026 — शुक्रवार 27 मार्च 2026 &nbsp;|&nbsp; संवत् 2083
         &nbsp;|&nbsp; चैत्रीय नवरात्रि
       </div>
     </header>
+  );
+}
+
+// ── SPECIAL MENTION BANNER ────────────────────────────────────────────────────
+function SpecialMentionBanner() {
+  return (
+    <div className="special-mention">
+      <div className="sm-inner">
+        <span className="sm-label">✦ विशेष घृत ज्योति ✦</span>
+        {SPECIAL_MENTIONS.map((m, i) => (
+          <span key={i} className="sm-item">
+            <Flame size={13} color="#D97706" />
+            {m}
+            {i < SPECIAL_MENTIONS.length - 1 && (
+              <span className="sm-sep">|</span>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1054,13 +1244,11 @@ function Marquee({ donors }: { donors: Donor[] }) {
 
   useEffect(() => {
     if (!trackRef.current) return;
-    // measure half the track (one copy) and run at ~80px/second
     const halfWidth = trackRef.current.scrollWidth / 2;
     setDuration(Math.max(30, halfWidth / 80));
-  }, [donors]); // recalculate whenever donors list changes
+  }, [donors]);
 
   const doubled = [...donors, ...donors];
-
   return (
     <div className="mq" title="Hover to pause">
       <div
@@ -1070,7 +1258,7 @@ function Marquee({ donors }: { donors: Donor[] }) {
       >
         {doubled.map((d, i) => (
           <span key={i} className="mq-item">
-            <Flame size={12} color="#FF6B00" />
+            <Flame size={12} color="#C2410C" />
             {d.nameHindi}
             <span className="mq-dot" />
           </span>
@@ -1103,12 +1291,12 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
       </div>
       <div className="card-footer">
         <span className="card-city">
-          <MapPin size={12} color="rgba(255,248,220,.5)" />
+          <MapPin size={12} />
           {donor.city || "—"}
         </span>
         <span className="card-receipt">
-          <FileText size={11} color="#B8860B" />
-          {donor.receipt}
+          <ReceiptText size={11} />
+          रसीद {donor.receipt}
         </span>
       </div>
       <div className="pill-row" style={{ marginTop: "0.5rem", gap: "0.3rem" }}>
@@ -1128,7 +1316,7 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
         <span
           className={`tag ${donor.series === "A" ? "tag-serA" : "tag-serB"}`}
         >
-          Series {donor.series}
+          {donor.series === "A" ? "Ghee (A)" : "Tail New (B)"}
         </span>
         {donor.mobile && (
           <span className="tag tag-phone">
@@ -1140,7 +1328,7 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
   );
 }
 
-// ── DONOR DETAIL MODAL ────────────────────────────────────────────────────────
+// ── DONOR MODAL ───────────────────────────────────────────────────────────────
 function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -1152,39 +1340,39 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
   type ModalRow = [ReactNode, string, string | number];
   const rows: ModalRow[] = [
     [
-      <MapPin key="city" size={13} color="rgba(255,248,220,.5)" />,
+      <MapPin key="c" size={13} color="#A87D4A" />,
       "शहर / City",
       donor.city || "—",
     ],
     [
-      <FileText key="rec" size={13} color="rgba(255,248,220,.5)" />,
+      <ReceiptText key="r" size={13} color="#A87D4A" />,
       "रसीद नं.",
       donor.receipt,
     ],
     [
-      <Phone key="mob" size={13} color="rgba(255,248,220,.5)" />,
+      <Phone key="m" size={13} color="#A87D4A" />,
       "मोबाइल",
       donor.mobile || "उपलब्ध नहीं",
     ],
     [
-      <Tag key="type" size={13} color="rgba(255,248,220,.5)" />,
+      <Tag key="t" size={13} color="#A87D4A" />,
       "प्रकार",
       donor.type === "Permanent" ? "स्थाई" : "नए",
     ],
     [
-      <AlignJustify key="ser" size={13} color="rgba(255,248,220,.5)" />,
+      <AlignJustify key="s" size={13} color="#A87D4A" />,
       "सूची",
-      donor.series === "A" ? "Dyuti (A)" : "Tail New (B)",
+      donor.series === "A" ? "Ghee (A)" : "Tail New (B)",
     ],
     [
-      <Star key="status" size={13} color="rgba(255,248,220,.5)" />,
+      <Star key="st" size={13} color="#A87D4A" />,
       "स्थिति / Status",
       donor.status || "Registered",
     ],
     ...(donor.amount
       ? [
           [
-            <Heart key="amt" size={13} color="rgba(255,248,220,.5)" />,
+            <Heart key="a" size={13} color="#A87D4A" />,
             "राशि / Amount",
             "₹" + donor.amount.toLocaleString("hi-IN"),
           ] as ModalRow,
@@ -1201,14 +1389,14 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
     >
       <div className="modal">
         <button className="modal-close" onClick={onClose}>
-          <X size={15} />
+          <X size={14} />
         </button>
         <div className="modal-flame-wrap">
-          <Flame size={28} color="#fff" />
+          <Flame size={26} color="#fff" />
         </div>
         <div className="modal-jno">
-          ज्योति संख्या {donor.jyotiNo} —{" "}
-          {donor.series === "A" ? "Dyuti" : "Tail New"} Series
+          ज्योति संख्या {donor.jyotiNo} ·{" "}
+          {donor.series === "A" ? "Ghee" : "Tail New"} Series
         </div>
         <h2 className="modal-name">{donor.nameHindi}</h2>
         <p className="modal-eng">{donor.nameEnglish}</p>
@@ -1226,6 +1414,12 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
           <br />
           जय माता दी 🙏
         </div>
+        <button
+          className="receipt-btn"
+          onClick={() => openDigitalReceipt(donor)}
+        >
+          <Download size={15} /> डिजिटल रसीद देखें / डाउनलोड करें
+        </button>
       </div>
     </div>
   );
@@ -1242,8 +1436,8 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     name: "",
     mobile: "",
     city: "",
-    amount: "",
-    category: "dyuti",
+    amount: "701",
+    category: "tel-jyoti",
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -1256,41 +1450,61 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     };
   }, []);
 
+  const handleCategoryChange = (value: string) => {
+    const found = DONATION_TYPES.find((d) => d.value === value);
+    setFd((prev) => ({
+      ...prev,
+      category: value,
+      amount: found?.amount || "",
+    }));
+  };
+
+  const selectedType = DONATION_TYPES.find((d) => d.value === fd.category);
+  const isFixed = !!selectedType?.amount;
+
+  const handlePhonePeRedirect = () => {
+    if (PHONEPE_LINK) {
+      window.open(PHONEPE_LINK, "_blank");
+      return;
+    }
+    if (UPI_ID && fd.amount) {
+      window.location.href = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${fd.amount}&cu=INR&tn=Donation+Mata+Bag+Mandir`;
+    } else {
+      showToast("कृपया पहले राशि दर्ज करें", "info");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-
-    // Validation
     if (!fd.name.trim()) {
       showToast("कृपया नाम दर्ज करें", "error");
-      setSubmitting(false);
       return;
     }
     if (fd.mobile.length !== 10) {
-      showToast("10 अंकों का मोबाइल नंबर दर्ज करें", "error");
-      setSubmitting(false);
+      showToast("10 अंकों का सही मोबाइल नंबर दर्ज करें", "error");
+      return;
+    }
+    if (!fd.amount) {
+      showToast("कृपया दान राशि दर्ज करें", "error");
       return;
     }
 
+    setSubmitting(true);
     try {
       if (SCRIPT_URL) {
-        // Use no-cors mode to avoid CORS preflight error
-        // The response won't be readable, but the data IS saved to the sheet
         await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors", // ← fixes CORS error with Apps Script
-          headers: { "Content-Type": "text/plain" }, // text/plain avoids preflight
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ ...fd, timestamp: new Date().toISOString() }),
         });
       } else {
-        // Demo mode — simulate delay
-        await new Promise((r) => setTimeout(r, 1200));
+        await new Promise((r) => setTimeout(r, 1000));
       }
       setSuccess(true);
-      showToast("दान सफलतापूर्वक दर्ज हो गया! 🙏", "success");
-      setTimeout(() => onClose(), 3000);
-    } catch (err) {
-      console.error("Submission error:", err);
+      showToast("दान पंजीकरण सफल! Admin जल्द सत्यापित करेंगे 🙏", "success");
+      setTimeout(() => onClose(), 4000);
+    } catch {
       showToast("कुछ गलत हुआ, कृपया पुनः प्रयास करें", "error");
     }
     setSubmitting(false);
@@ -1305,53 +1519,72 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     >
       <div className="modal form-modal">
         <button className="modal-close" onClick={onClose}>
-          <X size={15} />
+          <X size={14} />
         </button>
+
         {success ? (
           <div className="success-banner">
             <div
               style={{
                 display: "flex",
                 justifyContent: "center",
-                marginBottom: "0.6rem",
+                marginBottom: ".7rem",
               }}
             >
-              <CheckCircle size={44} color="#81C784" />
+              <CheckCircle size={48} color="#15803D" />
             </div>
-            <p>आपका दान सफलतापूर्वक दर्ज हो गया!</p>
-            <p style={{ marginTop: "0.5rem" }}>
-              माता आपकी सभी मनोकामनाएं पूर्ण करें।
+            <p style={{ fontWeight: 700, fontSize: "1rem" }}>
+              आपका दान पंजीकरण सफल हुआ!
+            </p>
+            <p style={{ marginTop: ".4rem", fontSize: ".88rem" }}>
+              Admin द्वारा भुगतान सत्यापन के बाद
+              <br />
+              आपकी रसीद वेबसाइट पर दिखेगी।
+            </p>
+            <p style={{ marginTop: ".5rem", fontSize: ".8rem", opacity: 0.7 }}>
+              जय माता दी 🙏
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <h2 className="form-title">
-              <Flame size={20} color="#FF6B00" /> नया दान / New Donation
+              <Flame size={20} color="#C2410C" /> नया दान / New Donation
             </h2>
 
-            <div className="form-group">
-              <label>पूरा नाम * / Full Name</label>
-              <input
-                className="form-input"
-                type="text"
-                required
-                placeholder="आपका पूरा नाम / Your full name"
-                value={fd.name}
-                onChange={(e) => setFd({ ...fd, name: e.target.value })}
-              />
+            {/* Name + Mobile */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: ".65rem",
+              }}
+            >
+              <div className="form-group">
+                <label>पूरा नाम *</label>
+                <input
+                  className="form-input"
+                  type="text"
+                  required
+                  placeholder="आपका पूरा नाम"
+                  value={fd.name}
+                  onChange={(e) => setFd({ ...fd, name: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>मोबाइल नं. *</label>
+                <input
+                  className="form-input"
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="10 अंक"
+                  value={fd.mobile}
+                  onChange={(e) => setFd({ ...fd, mobile: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label>मोबाइल नंबर * / Mobile No.</label>
-              <input
-                className="form-input"
-                type="tel"
-                required
-                maxLength={10}
-                placeholder="10 अंकों का मोबाइल नंबर"
-                value={fd.mobile}
-                onChange={(e) => setFd({ ...fd, mobile: e.target.value })}
-              />
-            </div>
+
+            {/* City */}
             <div className="form-group">
               <label>शहर / City</label>
               <input
@@ -1362,6 +1595,96 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
                 onChange={(e) => setFd({ ...fd, city: e.target.value })}
               />
             </div>
+
+            {/* Donation type — radio cards */}
+            <div className="form-group">
+              <label>दान का प्रकार *</label>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: ".4rem",
+                  marginTop: ".25rem",
+                }}
+              >
+                {DONATION_TYPES.map((opt) => (
+                  <label
+                    key={opt.value}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: ".55rem .9rem",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      border: `1.5px solid ${fd.category === opt.value ? "var(--primary)" : "var(--border)"}`,
+                      background:
+                        fd.category === opt.value ? "#FFF7F5" : "#FAFAFA",
+                      transition: "all .15s",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: ".5rem",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="category"
+                        value={opt.value}
+                        checked={fd.category === opt.value}
+                        onChange={() => handleCategoryChange(opt.value)}
+                        style={{
+                          accentColor: "var(--primary)",
+                          width: "16px",
+                          height: "16px",
+                          cursor: "pointer",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontFamily: "'Tiro Devanagari Sanskrit', serif",
+                          fontSize: ".93rem",
+                          color: "var(--text)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {opt.label}
+                      </span>
+                    </span>
+                    {opt.amount ? (
+                      <span
+                        style={{
+                          background: "var(--primary)",
+                          color: "#fff",
+                          padding: ".2rem .65rem",
+                          borderRadius: "999px",
+                          fontSize: ".73rem",
+                          fontWeight: 700,
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        ₹{Number(opt.amount).toLocaleString("hi-IN")}/-
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: ".72rem",
+                          color: "var(--text-muted)",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        {opt.hint}
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Amount — locked for fixed types */}
             <div className="form-group">
               <label>दान राशि (₹) / Amount</label>
               <input
@@ -1370,23 +1693,36 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
                 min="1"
                 placeholder="₹ राशि दर्ज करें"
                 value={fd.amount}
-                onChange={(e) => setFd({ ...fd, amount: e.target.value })}
+                readOnly={isFixed}
+                style={
+                  isFixed
+                    ? {
+                        background: "#F0FDF4",
+                        borderColor: "#86EFAC",
+                        color: "#15803D",
+                        fontWeight: 700,
+                      }
+                    : {}
+                }
+                onChange={(e) => {
+                  if (!isFixed) setFd({ ...fd, amount: e.target.value });
+                }}
               />
+              {isFixed && (
+                <p
+                  style={{
+                    fontSize: ".7rem",
+                    color: "#15803D",
+                    marginTop: ".25rem",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  ✓ यह राशि निर्धारित है
+                </p>
+              )}
             </div>
-            <div className="form-group">
-              <label>श्रेणी / Category</label>
-              <select
-                className="form-select"
-                value={fd.category}
-                onChange={(e) => setFd({ ...fd, category: e.target.value })}
-              >
-                <option value="dyuti">Dyuti — Akhand Jyoti</option>
-                <option value="samgri">Samgri — सामग्री</option>
-                <option value="ghee">Ghee — घी</option>
-                <option value="kapdha">Kapdha — कपड़ा</option>
-                <option value="other">Other — अन्य</option>
-              </select>
-            </div>
+
+            {/* Notes */}
             <div className="form-group">
               <label>संदेश / Note (ऑप्शनल)</label>
               <textarea
@@ -1400,26 +1736,48 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
             <button className="submit-btn" type="submit" disabled={submitting}>
               {submitting ? (
                 <>
-                  <RefreshCw size={16} className="spin" /> दर्ज हो रहा है...
+                  <RefreshCw size={16} className="spin" /> पंजीकरण हो रहा है...
                 </>
               ) : (
                 <>
-                  <Heart size={16} /> दान दर्ज करें
+                  <Heart size={16} /> दान पंजीकरण करें
                 </>
               )}
             </button>
-            {!SCRIPT_URL && (
-              <p
-                style={{
-                  fontSize: "0.7rem",
-                  color: "rgba(255,200,0,.45)",
-                  textAlign: "center",
-                  marginTop: "0.5rem",
-                }}
-              >
-                Demo mode — set SCRIPT_URL in index.tsx to save to Google Sheets
+
+            {/* PhonePe / UPI section */}
+            <div className="payment-section">
+              <div className="payment-title">
+                <CreditCard size={14} /> भुगतान विकल्प / Payment Options
+              </div>
+              <div className="payment-apps">
+                <button
+                  type="button"
+                  className="pay-btn primary"
+                  onClick={handlePhonePeRedirect}
+                >
+                  <Smartphone size={14} /> PhonePe से भुगतान
+                </button>
+                <button
+                  type="button"
+                  className="pay-btn"
+                  onClick={handlePhonePeRedirect}
+                >
+                  <QrCode size={14} /> UPI Pay
+                </button>
+              </div>
+              <div className="payment-divider" />
+              <p className="payment-note">
+                <strong>📌 महत्वपूर्ण:</strong> पहले ऊपर पंजीकरण करें, फिर
+                PhonePe / UPI से भुगतान करें। Admin द्वारा सत्यापन के बाद रसीद
+                वेबसाइट पर दिखेगी।
               </p>
-            )}
+              {!PHONEPE_LINK && !UPI_ID && (
+                <p className="demo-note">
+                  Admin: Set PHONEPE_LINK or UPI_ID in index.tsx
+                </p>
+              )}
+            </div>
           </form>
         )}
       </div>
@@ -1432,19 +1790,44 @@ function BlessingsSection() {
   return (
     <div className="blessings-section">
       <div className="photo-grid">
-        {/* Replace with <img src="/jyoti.jpg" alt="Akhand Jyoti" /> */}
+        {/* Replace with: <img src="/jyoti.jpg" alt="Akhand Jyoti" /> */}
         <div className="photo-frame">
           <img src="./jyoti.png" alt="" />
         </div>
-        {/* Replace with <img src="/durga.jpg" alt="Mata Bhagwati" /> */}
+        {/* Replace with: <img src="/mata.jpg" alt="Mata Ji" /> */}
         <div className="photo-frame">
-          <img src="matarani.png" alt="" />
+          <img src="./matarani.png" alt="" />
         </div>
       </div>
       <p className="blessing-text">
         🌺 माता बाग वाली मैया आपकी सभी मनोकामनाएं पूर्ण करें 🌺
       </p>
       <p className="jai-text">जय माता दी।।</p>
+    </div>
+  );
+}
+
+// ── ADHYAKSH SECTION ─────────────────────────────────────────────────────────
+function AdhyakshSection() {
+  return (
+    <div className="adhyaksh-section">
+      <div className="adhyaksh-inner">
+        {/* Replace with: <img src="/pandit-ji.jpg" alt="Pandit Ji" /> */}
+        <div className="adhyaksh-img">
+          <img src="./main.png" alt="" />
+        </div>
+        <div className="adhyaksh-text">
+          <div className="adhyaksh-name">पं. श्री अनिल कुमार चौबे</div>
+          <div className="adhyaksh-title">(ज्योतिर्विद तंत्राचार्य)</div>
+          <div
+            className="adhyaksh-title"
+            style={{ marginTop: ".2rem", fontSize: ".9rem", opacity: 0.95 }}
+          >
+            अध्यक्ष
+          </div>
+          <div className="adhyaksh-org">श्री माता बाग मंदिर समिति कुरवाई</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1457,7 +1840,7 @@ function Footer() {
         style={{
           display: "flex",
           justifyContent: "center",
-          marginBottom: "0.7rem",
+          marginBottom: ".7rem",
         }}
       >
         <img src="./diya.png" alt="" width={50} height={50} />
@@ -1471,7 +1854,7 @@ function Footer() {
       <hr className="footer-hr" />
       <div className="footer-credit">
         Website crafted with&nbsp;
-        <Heart size={11} color="#FF6B00" />
+        <Heart size={11} color="#C2410C" />
         &nbsp;by&nbsp;
         <a
           href="https://www.instagram.com/sarthak_io"
@@ -1494,25 +1877,23 @@ export default function Home() {
   const [donors, setDonors] = useState<Donor[]>(DONORS_DEMO);
   const [loading, setLoading] = useState(false);
 
-  // Search
   const [searchName, setSearchName] = useState("");
   const [searchMobile, setSearchMobile] = useState("");
   const [searchReceipt, setSearchReceipt] = useState("");
 
-  // Filters
   const [series, setSeries] = useState<SeriesFilter>("all");
   const [type, setType] = useState<TypeFilter>("all");
   const [alpha, setAlpha] = useState("");
   const [alphaMode, setAlphaMode] = useState<AlphaMode>("hindi");
 
-  // Pagination
   const [page, setPage] = useState(1);
 
-  // Modals
   const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  // ── Fetch live data
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Fetch live data
   useEffect(() => {
     if (!SCRIPT_URL) return;
     setLoading(true);
@@ -1521,48 +1902,58 @@ export default function Home() {
       .then((data: unknown) => {
         if (Array.isArray(data) && data.length > 0) {
           setDonors(data as Donor[]);
-          showToast(`${data.length} भक्त लोड हुए`, "success");
+          showToast(`${(data as Donor[]).length} भक्त लोड हुए`, "success");
         }
       })
       .catch(() =>
-        showToast("डेटा लोड नहीं हुआ, Demo mode में देख रहे हैं", "info"),
+        showToast("Demo mode — Google Sheets से कनेक्ट नहीं हुआ", "info"),
       )
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [searchName, searchMobile, searchReceipt, series, type, alpha, alphaMode]);
 
-  // ── Filter
+  // ── FLEXIBLE SEARCH — substring anywhere, multi-word support
   const filtered = useMemo<Donor[]>(() => {
     return donors.filter((d) => {
-      // Guard: skip malformed rows
-      if (!d || !d.nameHindi || !d.nameEnglish) return false;
+      if (!d?.nameHindi || !d?.nameEnglish) return false;
 
       if (searchName) {
-        const q = searchName.toLowerCase().trim();
-        if (
-          !d.nameHindi.includes(searchName.trim()) &&
-          !d.nameEnglish.toLowerCase().includes(q)
-        )
-          return false;
+        const q = searchName.trim().toLowerCase();
+        const words = q.split(/\s+/).filter(Boolean);
+        const nh = d.nameHindi.toLowerCase();
+        const ne = d.nameEnglish.toLowerCase();
+
+        // Single term: substring anywhere in either name
+        const directMatch = nh.includes(q) || ne.includes(q);
+
+        // Multi-word: every word must appear somewhere
+        const allWords =
+          words.length > 1
+            ? words.every((w) => nh.includes(w) || ne.includes(w))
+            : false;
+
+        if (!directMatch && !allWords) return false;
       }
+
       if (searchMobile && !d.mobile.includes(searchMobile.trim())) return false;
       if (searchReceipt && !String(d.receipt).includes(searchReceipt.trim()))
         return false;
       if (series !== "all" && d.series !== series) return false;
       if (type !== "all" && d.type !== type) return false;
+
+      // Alphabet: substring anywhere (not just prefix)
       if (alpha) {
-        if (alphaMode === "hindi" && !d.nameHindi.startsWith(alpha))
-          return false;
+        if (alphaMode === "hindi" && !d.nameHindi.includes(alpha)) return false;
         if (
           alphaMode === "english" &&
-          !d.nameEnglish.toUpperCase().startsWith(alpha)
+          !d.nameEnglish.toUpperCase().includes(alpha)
         )
           return false;
       }
+
       return true;
     });
   }, [
@@ -1578,13 +1969,14 @@ export default function Home() {
 
   const visibleDonors = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visibleDonors.length < filtered.length;
-  const hasFilter =
+  const hasFilter = !!(
     searchName ||
     searchMobile ||
     searchReceipt ||
     series !== "all" ||
     type !== "all" ||
-    alpha;
+    alpha
+  );
 
   const resetAll = () => {
     setSearchName("");
@@ -1596,9 +1988,23 @@ export default function Home() {
     setPage(1);
   };
 
+  // Mobile UX: scroll to results on Enter
+  const scrollToResults = useCallback(() => {
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }, []);
+
+  const handleSearchKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") scrollToResults();
+  };
+
   const seriesOpts: { v: SeriesFilter; l: string }[] = [
     { v: "all", l: "सभी" },
-    { v: "A", l: "Dyuti (A)" },
+    { v: "A", l: "Ghee (A)" },
     { v: "B", l: "Tail New (B)" },
   ];
   const typeOpts: { v: TypeFilter; l: string }[] = [
@@ -1613,35 +2019,46 @@ export default function Home() {
         <title>माता बाग मंदिर कुरवाई — अखंड ज्योति सूची 2026</title>
         <meta
           name="description"
-          content="सर्व मनोकामना पूर्ति अखंड ज्योति सूची — चैत्रीय नवरात्रि 2026"
+          content="सर्व मनोकामना पूर्ति अखंड ज्योति सूची — चैत्रीय नवरात्रि 2026 | श्री माता बाग मंदिर कुरवाई"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
+        <meta
+          property="og:title"
+          content="माता बाग मंदिर कुरवाई — अखंड ज्योति सूची 2026"
+        />
+        <meta
+          property="og:description"
+          content="सर्व मनोकामना पूर्ति अखंड ज्योति सूची — चैत्रीय नवरात्रि 2026"
+        />
+        <meta property="og:image" content="/og-image.jpg" />
       </Head>
 
       <ToastContainer toasts={toasts} />
       <FloatingPetals />
+
       <Header />
+      <SpecialMentionBanner />
       <Marquee donors={donors} />
 
       <main className="main">
         {/* ── SEARCH ── */}
         <div className="search-box">
           <div className="search-title">
-            <Search size={18} color="#FFD700" />
-            कृपया नाम सर्च करें
+            <Search size={18} color="#C2410C" /> कृपया नाम सर्च करें
           </div>
           <div className="search-grid">
             <div className="search-field">
               <label>नाम / Name</label>
               <span className="field-icon">
-                <Search size={15} />
+                <Search size={14} />
               </span>
               <input
                 className="search-input"
                 placeholder="हिंदी या English में नाम..."
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
+                onKeyDown={handleSearchKey}
               />
               {searchName && (
                 <button className="clear-btn" onClick={() => setSearchName("")}>
@@ -1652,7 +2069,7 @@ export default function Home() {
             <div className="search-field">
               <label>कृपया मोबाइल नो. डाले (ऑप्शनल)</label>
               <span className="field-icon">
-                <Phone size={15} />
+                <Phone size={14} />
               </span>
               <input
                 className="search-input"
@@ -1661,6 +2078,7 @@ export default function Home() {
                 placeholder="Mobile number..."
                 value={searchMobile}
                 onChange={(e) => setSearchMobile(e.target.value)}
+                onKeyDown={handleSearchKey}
               />
               {searchMobile && (
                 <button
@@ -1674,7 +2092,7 @@ export default function Home() {
             <div className="search-field">
               <label>रसीद नंबर / Receipt No.</label>
               <span className="field-icon">
-                <ReceiptText size={15} />
+                <ReceiptText size={14} />
               </span>
               <input
                 className="search-input"
@@ -1682,6 +2100,7 @@ export default function Home() {
                 placeholder="Receipt number..."
                 value={searchReceipt}
                 onChange={(e) => setSearchReceipt(e.target.value)}
+                onKeyDown={handleSearchKey}
               />
               {searchReceipt && (
                 <button
@@ -1697,7 +2116,6 @@ export default function Home() {
 
         {/* ── FILTERS ── */}
         <div className="filters">
-          {/* Series */}
           <div className="filter-group">
             <div className="filter-label">
               <AlignJustify size={12} /> सूची — Series
@@ -1709,14 +2127,11 @@ export default function Home() {
                   className={`pill ${series === o.v ? "active" : ""}`}
                   onClick={() => setSeries(o.v)}
                 >
-                  {series === o.v && <CheckCircle size={12} color="#fff" />}
-                  {o.l}
+                  {series === o.v && <CheckCircle size={11} />} {o.l}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Type */}
           <div className="filter-group">
             <div className="filter-label">
               <Tag size={12} /> प्रकार — Type
@@ -1728,14 +2143,11 @@ export default function Home() {
                   className={`pill ${type === o.v ? "active" : ""}`}
                   onClick={() => setType(o.v)}
                 >
-                  {type === o.v && <CheckCircle size={12} color="#fff" />}
-                  {o.l}
+                  {type === o.v && <CheckCircle size={11} />} {o.l}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Alphabet */}
           <div className="filter-group">
             <div className="filter-label">
               <Type size={12} /> अक्षर — Alphabet
@@ -1764,7 +2176,7 @@ export default function Home() {
                   className="mode-btn clear-btn-mode"
                   onClick={() => setAlpha("")}
                 >
-                  <X size={12} /> Clear
+                  <X size={11} /> Clear
                 </button>
               )}
             </div>
@@ -1774,7 +2186,10 @@ export default function Home() {
                   <button
                     key={a}
                     className={`${alphaMode === "hindi" ? "alpha-pill-hi" : "alpha-pill-en"}${alpha === a ? " active" : ""}`}
-                    onClick={() => setAlpha(alpha === a ? "" : a)}
+                    onClick={() => {
+                      setAlpha(alpha === a ? "" : a);
+                      scrollToResults();
+                    }}
                   >
                     {a}
                   </button>
@@ -1785,12 +2200,12 @@ export default function Home() {
         </div>
 
         {/* ── RESULT COUNT ── */}
-        <div className="result-count">
-          <Users size={14} color="#FFD700" />
+        <div className="result-count" ref={resultsRef}>
+          <Users size={14} color="#C2410C" />
           &nbsp;<strong>{filtered.length}</strong> / {donors.length} भक्त मिले
           {hasFilter && (
             <span className="reset-link" onClick={resetAll}>
-              <RefreshCw size={12} /> सभी दिखाएं
+              <RefreshCw size={11} /> सभी दिखाएं
             </span>
           )}
         </div>
@@ -1798,14 +2213,16 @@ export default function Home() {
         {/* ── GRID ── */}
         {loading ? (
           <div
-            style={{
-              textAlign: "center",
-              padding: "3rem",
-              color: "rgba(255,248,220,.5)",
-            }}
+            style={{ textAlign: "center", padding: "3rem", color: "#A87D4A" }}
           >
-            <RefreshCw size={32} color="#FF6B00" className="spin" />
-            <p style={{ marginTop: "0.8rem", fontFamily: "Mukta, sans-serif" }}>
+            <RefreshCw size={32} color="#C2410C" className="spin" />
+            <p
+              style={{
+                marginTop: ".8rem",
+                fontFamily: "Mukta, sans-serif",
+                color: "#78532A",
+              }}
+            >
               लोड हो रहा है...
             </p>
           </div>
@@ -1815,10 +2232,10 @@ export default function Home() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                marginBottom: "0.6rem",
+                marginBottom: ".6rem",
               }}
             >
-              <Search size={40} color="rgba(255,248,220,.2)" />
+              <Search size={44} color="#E9D49A" />
             </div>
             <p>कोई परिणाम नहीं मिला</p>
             <p className="sub">अलग नाम या रसीद नंबर से खोजें</p>
@@ -1835,8 +2252,6 @@ export default function Home() {
                 />
               ))}
             </div>
-
-            {/* Load More */}
             {(hasMore || page > 1) && (
               <div className="load-more-wrap">
                 {hasMore && (
@@ -1849,7 +2264,7 @@ export default function Home() {
                 )}
                 <p className="load-more-info">
                   दिख रहे हैं: {visibleDonors.length} / {filtered.length}
-                  {!hasMore && " — सभी दिख रहे हैं"}
+                  {!hasMore && " — सभी दिख रहे हैं ✓"}
                 </p>
               </div>
             )}
@@ -1859,9 +2274,9 @@ export default function Home() {
         <BlessingsSection />
       </main>
 
+      <AdhyakshSection />
       <Footer />
 
-      {/* ── MODALS ── */}
       {selectedDonor && (
         <DonorModal
           donor={selectedDonor}
@@ -1875,9 +2290,8 @@ export default function Home() {
         />
       )}
 
-      {/* ── FAB ── */}
       <button className="fab" onClick={() => setShowForm(true)}>
-        <Plus size={17} color="#fff" /> दान करें
+        <Plus size={17} /> दान करें
       </button>
     </>
   );
