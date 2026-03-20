@@ -1032,11 +1032,51 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
     </div>
   );
 }
-
-// ── DIGITAL RECEIPT ───────────────────────────────────────────────────────────
-function openDigitalReceipt(donor: Donor): void {
+// Make it async so we can fetch + base64-encode the signature first
+async function openDigitalReceipt(donor: Donor): Promise<void> {
   const now = new Date();
   const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
+
+  // ── 1. Fetch signature.png → base64 so it works inside blob URL ──────────
+  let signatureSrc = "";
+  try {
+    const res = await fetch("/signature.png");
+    const blob = await res.blob();
+    signatureSrc = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    signatureSrc = "";
+  }
+
+  // ── 2. Detect ghee vs tel from category saved in donor.notes + amount ─────
+  const cat = (donor.notes || "").toLowerCase();
+  const isGhee = cat.includes("ghee") || donor.amount === 1801;
+  const isTel = cat.includes("tel") || donor.amount === 701;
+
+  const gheeCircle = isGhee
+    ? "background:#8B1A1A;border-color:#8B1A1A;"
+    : "background:#fff;border-color:#8B1A1A;";
+  const gheeTxt = isGhee ? "color:#FFD700;" : "color:#8B1A1A;";
+  const telCircle = isTel
+    ? "background:#8B1A1A;border-color:#8B1A1A;"
+    : "background:#fff;border-color:#8B1A1A;";
+  const telTxt = isTel ? "color:#FFD700;" : "color:#8B1A1A;";
+
+  const amtStr = donor.amount
+    ? `₹${donor.amount.toLocaleString("hi-IN")}/-`
+    : "";
+  const gheeAmt = isGhee && amtStr ? amtStr : "1801/-";
+  const telAmt = isTel && amtStr ? amtStr : "701/-";
+
+  // ── 3. Safe filename for image download ───────────────────────────────────
+  const safeName = donor.nameEnglish
+    .replace(/[^a-zA-Z0-9]/g, "-")
+    .substring(0, 20);
+  const filename = `receipt-${donor.jyotiNo}-${safeName}.png`;
 
   const html = `<!DOCTYPE html>
 <html lang="hi">
@@ -1045,6 +1085,7 @@ function openDigitalReceipt(donor: Donor): void {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>रसीद — ${donor.nameHindi}</title>
 <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit:ital@0;1&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#f0ece4;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;font-family:'DM Sans',sans-serif}
@@ -1054,9 +1095,9 @@ function openDigitalReceipt(donor: Donor): void {
   .title-row{background:#FFF3E0;padding:.55rem .75rem .3rem;text-align:center;border-bottom:2px solid #8B1A1A}
   .title-hi{font-family:'Tiro Devanagari Sanskrit',serif;font-size:1.2rem;color:#8B1A1A;font-weight:700;line-height:1.3}
   .main-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem .7rem;border-bottom:2px dashed #C0892A;background:#FFF9EE;gap:.5rem}
-  .circle-badge{width:56px;height:56px;border-radius:50%;border:2.5px solid #8B1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;flex-shrink:0;padding:.2rem}
-  .circle-badge .cb-lbl{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.65rem;color:#8B1A1A;font-weight:700;line-height:1.2}
-  .circle-badge .cb-amt{font-family:'DM Sans',sans-serif;font-size:.65rem;color:#8B1A1A;font-weight:700}
+  .circle-badge{width:56px;height:56px;border-radius:50%;border:2.5px solid #8B1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;padding:.2rem}
+  .circle-badge .cb-lbl{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.65rem;font-weight:700;line-height:1.2}
+  .circle-badge .cb-amt{font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700}
   .temple-center{text-align:center;flex:1;padding:0 .3rem}
   .temple-name{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.95rem;color:#8B1A1A;font-weight:700;line-height:1.4}
   .meta-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem .75rem;border-bottom:1px solid #E8D5A0;background:#FFFDF5}
@@ -1073,40 +1114,53 @@ function openDigitalReceipt(donor: Donor): void {
   .thankyou{text-align:center;padding:.38rem .5rem;font-size:.75rem;color:#8B1A1A;font-weight:700;font-family:'Tiro Devanagari Sanskrit',serif;border-bottom:1px dashed #C0892A;background:#FFF3E0}
   .sig-row{display:flex;justify-content:space-between;align-items:flex-end;padding:.55rem .75rem;background:#FFF9EE}
   .sig-left{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.75rem;color:#8B1A1A;line-height:1.6}
-  .sig-right{text-align:right}
-  .sig-line{width:90px;border-bottom:1.5px solid #8B1A1A;margin-bottom:.2rem}
-  .sig-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.7rem;color:#8B1A1A}
+  .sig-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+  .sig-img{width:100px;height:42px;object-fit:contain;display:block;margin-bottom:-2px}
+  .sig-line{width:100px;border-bottom:1.5px solid #8B1A1A}
+  .sig-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.68rem;color:#8B1A1A;margin-top:.15rem}
+  .sig-sublabel{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.6rem;color:#888;margin-top:.05rem}
   .bot-strip{background:#8B1A1A;padding:.28rem .5rem;text-align:center;color:rgba(255,215,0,.85);font-size:.6rem;letter-spacing:.04em;font-family:'DM Sans',sans-serif}
-  .btn-row{display:flex;gap:.65rem;margin-top:.9rem;justify-content:center;flex-wrap:wrap}
-  .btn{padding:.6rem 1.4rem;border:none;border-radius:8px;font-size:.88rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:flex;align-items:center;gap:.4rem}
-  .btn-save{background:#8B1A1A;color:#fff}
+  .btn-row{display:flex;gap:.55rem;margin-top:.9rem;justify-content:center;flex-wrap:wrap}
+  .btn{padding:.58rem 1.1rem;border:none;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:flex;align-items:center;gap:.35rem;transition:opacity .15s}
+  .btn-pdf{background:#8B1A1A;color:#fff}
+  .btn-img{background:#1a6b3c;color:#fff}
   .btn-close{background:#e5e7eb;color:#374151}
-  .btn:hover{opacity:.88}
-  @media print{body{background:#fff;padding:0;display:block}.btn-row,.no-print{display:none!important}.receipt{box-shadow:none;width:100%;max-width:none}}
-  @media(max-width:480px){.receipt{width:100%}}
+  .btn:hover{opacity:.85}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  @media print{
+    body{background:#fff;padding:0;display:block}
+    .btn-row{display:none!important}
+    .receipt{box-shadow:none;width:100%;max-width:none}
+  }
+  @media(max-width:480px){.receipt{width:100%}.btn-row{gap:.4rem}.btn{padding:.55rem .85rem;font-size:.78rem}}
 </style>
 </head>
 <body>
-<div class="receipt">
+<div class="receipt" id="receiptEl">
   <div class="top-strip">
-    <span>जय माता दी</span><span>जय माँ भीतरासण</span><span>जय माता दी</span>
+    <span>जय माता दी</span>
+    <span>जय मां बीजासन</span>
+    <span>जय माता दी</span>
   </div>
+
   <div class="title-row">
     <div class="title-hi">सर्वमनोकामना पूर्ति अखंड ज्योति</div>
   </div>
+
   <div class="main-row">
-    <div class="circle-badge">
-      <span class="cb-lbl">घृत</span>
-      <span class="cb-amt">1801/-</span>
+    <div class="circle-badge" style="${gheeCircle}">
+      <span class="cb-lbl" style="${gheeTxt}">घृत</span>
+      <span class="cb-amt" style="${gheeTxt}">${gheeAmt}</span>
     </div>
     <div class="temple-center">
       <div class="temple-name">श्री माता बाग मंदिर कुरवाई</div>
     </div>
-    <div class="circle-badge">
-      <span class="cb-lbl">तेल</span>
-      <span class="cb-amt">701/-</span>
+    <div class="circle-badge" style="${telCircle}">
+      <span class="cb-lbl" style="${telTxt}">तेल</span>
+      <span class="cb-amt" style="${telTxt}">${telAmt}</span>
     </div>
   </div>
+
   <div class="meta-row">
     <div class="kra-wrap">
       <span class="kra-label">कं.</span>
@@ -1117,52 +1171,100 @@ function openDigitalReceipt(donor: Donor): void {
       <div class="date-val">${date}</div>
     </div>
   </div>
+
   <div class="field-row">
     <span class="f-label">सु/श्री/श्रीमति</span>
     <span class="f-val">${donor.nameHindi}</span>
   </div>
+
   <div class="field-row" style="gap:.5rem">
     <span class="f-label">शहर</span>
     <span class="f-val" style="max-width:110px">${donor.city || "—"}</span>
     <span class="f-label" style="margin-left:.5rem">मोबाइल नं.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.82rem">${donor.mobile || "—"}</span>
   </div>
+
   <div class="field-row">
     <span class="f-label">रसीद नं.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.receipt}</span>
     <span class="f-label" style="margin-left:.5rem">ज्योति क्र.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.jyotiNo}</span>
   </div>
+
   <div class="amount-note">
     अन्य राशि (विवरण जैसे घृत, सामग्री, निर्माण कार्य, मंदिर, नवरात्र महोत्सव) ...
-    अन्य कार्य— <strong>${donor.amount ? "₹" + donor.amount.toLocaleString("hi-IN") + "/-" : "—"}</strong>
+    अन्य कार्य— <strong>${amtStr || "—"}</strong>
   </div>
+
   <div class="thankyou">!!मंदिर हेतु दान स्वरूप राशि सधन्यवाद प्राप्त किये!!</div>
+
   <div class="sig-row">
     <div class="sig-left">
       <div>ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
-      <div style="margin-top:.2rem">ज्योति राशि — <strong>${donor.amount ? "₹" + donor.amount.toLocaleString("hi-IN") + "/-" : "—"}</strong></div>
+      <div style="margin-top:.2rem">ज्योति राशि — <strong>${amtStr || "—"}</strong></div>
     </div>
     <div class="sig-right">
+      ${
+        signatureSrc
+          ? `<img src="${signatureSrc}" alt="Signature" class="sig-img" />`
+          : `<div style="width:100px;height:42px;"></div>`
+      }
       <div class="sig-line"></div>
       <div class="sig-label">प्राप्त कर्ता</div>
+      <div class="sig-sublabel">अध्यक्ष, माता बाग मंदिर समिति</div>
     </div>
   </div>
-  <div class="bot-strip">navratri-psi.vercel.app &nbsp;·&nbsp; जय माता दी 🙏</div>
+
+  <div class="bot-strip">matabaagmandir.com &nbsp;·&nbsp; जय माता दी 🙏</div>
 </div>
-<div class="btn-row no-print">
-  <button class="btn btn-save" onclick="window.print()">📥 Save / Print</button>
+
+<div class="btn-row">
+  <button class="btn btn-pdf" onclick="window.print()">📄 PDF / Print</button>
+  <button class="btn btn-img" id="imgBtn" onclick="downloadAsImage()">🖼️ Image Download</button>
   <button class="btn btn-close" onclick="window.close()">✕ Close</button>
 </div>
+
+<script>
+  async function downloadAsImage() {
+    const btn = document.getElementById('imgBtn');
+    const orig = btn.textContent;
+    btn.textContent = '⏳ Please wait...';
+    btn.disabled = true;
+    try {
+      // Wait for fonts to load before capturing
+      await document.fonts.ready;
+      const receipt = document.getElementById('receiptEl');
+      const canvas  = await html2canvas(receipt, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FFF9EE',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Hide buttons in the cloned doc so they don't appear in screenshot
+          const row = clonedDoc.querySelector('.btn-row');
+          if (row) row.style.display = 'none';
+        }
+      });
+      const link    = document.createElement('a');
+      link.download = '${filename}';
+      link.href     = canvas.toDataURL('image/png');
+      link.click();
+    } catch(e) {
+      alert('Image generation failed. Please use PDF / Print instead.');
+    }
+    btn.textContent = orig;
+    btn.disabled    = false;
+  }
+<\/script>
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank", "width=500,height=740");
+  const receiptBlob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(receiptBlob);
+  const win = window.open(url, "_blank", "width=520,height=800");
   if (win) win.onload = () => URL.revokeObjectURL(url);
 }
-
 // ── FLOATING PETALS ───────────────────────────────────────────────────────────
 function FloatingPetals() {
   const items = [
@@ -1416,7 +1518,9 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
         </div>
         <button
           className="receipt-btn"
-          onClick={() => openDigitalReceipt(donor)}
+          onClick={() => {
+            void openDigitalReceipt(donor);
+          }}
         >
           <Download size={15} /> डिजिटल रसीद देखें / डाउनलोड करें
         </button>
