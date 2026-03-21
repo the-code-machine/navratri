@@ -52,7 +52,7 @@ import type {
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const SCRIPT_URL = ""; // ← Google Apps Script Web App URL
 const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
-const UPI_ID = "9238669830@okbizaxis"; // ← UPI ID
+const UPI_ID = "choubeyji740-2@oksbi"; // ← UPI ID
 const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
 const PAGE_SIZE = 12;
 
@@ -1613,7 +1613,7 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
   // Replace the single handlePhonePeRedirect with per-app handlers
   const buildUpiUrl = (scheme: string) => {
     const amt = fd.amount || "0";
-    const base = `pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent("Donation Mata Bag Mandir Kurwai")}`;
+    const base = `pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(`ThankYou ${fd.name} for Your Donation - Mata Bag Mandir Kurwai`)}`;
     return `${scheme}${base}`;
   };
 
