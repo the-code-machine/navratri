@@ -48,9 +48,10 @@ import type {
   SeriesFilter,
   TypeFilter,
 } from "../types/donor";
+import { url } from "@/config";
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const SCRIPT_URL = ""; // ← Google Apps Script Web App URL
+const SCRIPT_URL = url; // ← Google Apps Script Web App URL
 const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
 const UPI_ID = "choubeyji740-2@oksbi"; // ← UPI ID
 const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
@@ -1610,25 +1611,18 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     }
   };
 
-  // Replace the single handlePhonePeRedirect with per-app handlers
-  const buildUpiUrl = (scheme: string) => {
-    const amt = fd.amount || "0";
-    const base = `pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(`ThankYou ${fd.name} for Your Donation - Mata Bag Mandir Kurwai`)}`;
-    return `${scheme}${base}`;
-  };
-
-  const openUpiApp = (app: "phonepe" | "gpay" | "paytm" | "generic") => {
-    if (PHONEPE_LINK && app === "phonepe") {
+  const handlePhonePeRedirect = () => {
+    if (PHONEPE_LINK) {
       window.open(PHONEPE_LINK, "_blank");
       return;
     }
-    const urls: Record<string, string> = {
-      phonepe: buildUpiUrl("phonepe://pay?"),
-      gpay: buildUpiUrl("tez://upi/pay?"),
-      paytm: buildUpiUrl("paytmmp://pay?"),
-      generic: buildUpiUrl("upi://pay?"),
-    };
-    window.location.href = urls[app];
+    if (UPI_ID) {
+      const amt = fd.amount || "0";
+      const link = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(`Thank You ${fd.name} for Your Donation - Mata Bag Mandir Kurwai`)}`;
+      window.location.href = link;
+    } else {
+      showToast("UPI ID not configured. Please contact admin.", "info");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1894,113 +1888,25 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               <div className="payment-title">
                 <CreditCard size={14} /> पहले भुगतान करें / Pay First
               </div>
-
-              {/* Individual app buttons — each uses its own URL scheme */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: ".5rem",
-                  marginBottom: ".6rem",
-                }}
-              >
-                {/* PhonePe */}
+              <div className="payment-apps">
                 <button
                   type="button"
-                  onClick={() => openUpiApp("phonepe")}
-                  style={{
-                    padding: ".55rem .5rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid #5F259F",
-                    background: "#F5F0FC",
-                    color: "#5F259F",
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: 700,
-                    fontSize: ".8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: ".4rem",
-                  }}
+                  className="pay-btn primary"
+                  onClick={handlePhonePeRedirect}
                 >
-                  <span style={{ fontSize: "1rem" }}>🟣</span> PhonePe
+                  <Smartphone size={14} /> PhonePe से भुगतान
                 </button>
-
-                {/* Google Pay */}
                 <button
                   type="button"
-                  onClick={() => openUpiApp("gpay")}
-                  style={{
-                    padding: ".55rem .5rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid #1A73E8",
-                    background: "#EEF4FE",
-                    color: "#1A73E8",
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: 700,
-                    fontSize: ".8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: ".4rem",
-                  }}
+                  className="pay-btn"
+                  onClick={handlePhonePeRedirect}
                 >
-                  <span style={{ fontSize: "1rem" }}>🔵</span> Google Pay
-                </button>
-
-                {/* Paytm */}
-                <button
-                  type="button"
-                  onClick={() => openUpiApp("paytm")}
-                  style={{
-                    padding: ".55rem .5rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid #00B9F1",
-                    background: "#E6F9FF",
-                    color: "#007BB5",
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: 700,
-                    fontSize: ".8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: ".4rem",
-                  }}
-                >
-                  <span style={{ fontSize: "1rem" }}>🔷</span> Paytm
-                </button>
-
-                {/* Any other UPI app */}
-                <button
-                  type="button"
-                  onClick={() => openUpiApp("generic")}
-                  style={{
-                    padding: ".55rem .5rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid var(--border)",
-                    background: "#FAFAFA",
-                    color: "var(--text-sub)",
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: 700,
-                    fontSize: ".8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: ".4rem",
-                  }}
-                >
-                  <span style={{ fontSize: "1rem" }}>📱</span> अन्य UPI App
+                  <QrCode size={14} /> UPI Pay
                 </button>
               </div>
-
               <div className="payment-divider" />
               <p className="payment-note">
-                <strong>📌 Step 1:</strong> ऊपर अपना UPI App चुनें और भुगतान
-                करें।
+                <strong>📌 Step 1:</strong> ऊपर से भुगतान करें।
                 <br />
                 <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR / Transaction
                 ID नीचे दर्ज करें।
