@@ -1,15 +1,10 @@
-// pages/index.tsx
+"use client";
+// pages/index.tsx  (or app/page.tsx)
 // ─────────────────────────────────────────────────────────────────────────────
 //  माता बाग मंदिर कुरवाई  |  Navratri 2026  |  Final Version
-//
 //  SETUP:  npm install lucide-react
-//
-//  CONFIG:
-//    SCRIPT_URL   → Google Apps Script Web App URL
-//    PHONEPE_LINK → e.g. https://phon.pe/ru_XXXXXX
-//    UPI_ID       → e.g. matababag@ybl
 // ─────────────────────────────────────────────────────────────────────────────
-"use client";
+
 import Head from "next/head";
 import {
   useState,
@@ -24,7 +19,6 @@ import {
   Phone,
   ReceiptText,
   MapPin,
-  FileText,
   Tag,
   Type,
   Flame,
@@ -36,7 +30,6 @@ import {
   Plus,
   RefreshCw,
   AlignJustify,
-  Building,
   Sparkles,
   Instagram,
   X,
@@ -55,22 +48,21 @@ import type {
   SeriesFilter,
   TypeFilter,
 } from "../types/donor";
-import { url } from "@/config";
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const SCRIPT_URL = url; // ← Google Apps Script Web App URL
+const SCRIPT_URL = ""; // ← Google Apps Script Web App URL
 const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
-const UPI_ID = ""; // ← e.g. matababagmandir@ybl
+const UPI_ID = "9238669830@okbizaxis"; // ← UPI ID
 const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
 const PAGE_SIZE = 12;
 
-// ── SPECIAL MENTION DONORS ────────────────────────────────────────────────────
+// ── SPECIAL MENTIONS ─────────────────────────────────────────────────────────
 const SPECIAL_MENTIONS = [
   "विशेष घृत ज्योति — श्री संजयवत्स जी (नई दिल्ली)",
   "विशेष घृत ज्योति — श्री हरिसिंह जी सप्रे, विधायक एवं संरक्षक कुरवाई",
 ];
 
-// ── DONATION TYPES WITH FIXED AMOUNTS ─────────────────────────────────────────
+// ── DONATION TYPES ────────────────────────────────────────────────────────────
 const DONATION_TYPES = [
   {
     value: "tel-jyoti",
@@ -619,7 +611,6 @@ const DONORS_DEMO: Donor[] = [
     status: "Registered",
     notes: "",
   },
-  // Series B
   {
     id: "B1",
     series: "B",
@@ -997,6 +988,24 @@ const HINDI_ALPHA = [
 ];
 const ENG_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+// ── FIX 1: Normalize type field from Sheets (handles Hindi "स्थाई") ──────────
+function normalizeType(t: string): "Permanent" | "New" {
+  const s = (t || "").trim();
+  if (s === "स्थाई" || s === "Permanent" || s.toLowerCase() === "permanent") {
+    return "Permanent";
+  }
+  return "New";
+}
+
+// ── FIX 2: Infer amount from series if amount is 0 ───────────────────────────
+// Series A = Ghee ₹1801, Series B = Tel ₹701
+function getEffectiveAmount(donor: Donor): number {
+  if (donor.amount && donor.amount > 0) return donor.amount;
+  if (donor.series === "A") return 1801;
+  if (donor.series === "B") return 701;
+  return 0;
+}
+
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 type ToastType = "success" | "error" | "info";
 interface ToastItem {
@@ -1032,12 +1041,13 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
     </div>
   );
 }
-// Make it async so we can fetch + base64-encode the signature first
+
+// ── DIGITAL RECEIPT ───────────────────────────────────────────────────────────
 async function openDigitalReceipt(donor: Donor): Promise<void> {
   const now = new Date();
   const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
 
-  // ── 1. Fetch signature.png → base64 so it works inside blob URL ──────────
+  // Fetch signature → base64 so it works inside blob URL
   let signatureSrc = "";
   try {
     const res = await fetch("/signature.png");
@@ -1052,10 +1062,16 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
     signatureSrc = "";
   }
 
-  // ── 2. Detect ghee vs tel from category saved in donor.notes + amount ─────
+  const effectiveAmt = getEffectiveAmount(donor);
+  const amtStr =
+    effectiveAmt > 0 ? `₹${effectiveAmt.toLocaleString("hi-IN")}/-` : "";
+
   const cat = (donor.notes || "").toLowerCase();
-  const isGhee = cat.includes("ghee") || donor.amount === 1801;
-  const isTel = cat.includes("tel") || donor.amount === 701;
+  // FIX: also detect from series
+  const isGhee =
+    cat.includes("ghee") || donor.amount === 1801 || donor.series === "A";
+  const isTel =
+    cat.includes("tel") || donor.amount === 701 || donor.series === "B";
 
   const gheeCircle = isGhee
     ? "background:#8B1A1A;border-color:#8B1A1A;"
@@ -1065,14 +1081,9 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
     ? "background:#8B1A1A;border-color:#8B1A1A;"
     : "background:#fff;border-color:#8B1A1A;";
   const telTxt = isTel ? "color:#FFD700;" : "color:#8B1A1A;";
-
-  const amtStr = donor.amount
-    ? `₹${donor.amount.toLocaleString("hi-IN")}/-`
-    : "";
   const gheeAmt = isGhee && amtStr ? amtStr : "1801/-";
   const telAmt = isTel && amtStr ? amtStr : "701/-";
 
-  // ── 3. Safe filename for image download ───────────────────────────────────
   const safeName = donor.nameEnglish
     .replace(/[^a-zA-Z0-9]/g, "-")
     .substring(0, 20);
@@ -1092,14 +1103,15 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   .receipt{width:420px;max-width:100%;background:#FFF9EE;border:3px solid #8B1A1A;border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.2);overflow:hidden}
   .top-strip{background:#8B1A1A;padding:.32rem .6rem;display:flex;justify-content:space-between;align-items:center}
   .top-strip span{color:#FFD700;font-size:.62rem;letter-spacing:.06em;font-weight:700;font-family:'DM Sans',sans-serif}
-  .title-row{background:#FFF3E0;padding:.55rem .75rem .3rem;text-align:center;border-bottom:2px solid #8B1A1A}
-  .title-hi{font-family:'Tiro Devanagari Sanskrit',serif;font-size:1.2rem;color:#8B1A1A;font-weight:700;line-height:1.3}
+  .title-row{background:#FFF3E0;padding:.5rem .75rem .28rem;text-align:center;border-bottom:2px solid #8B1A1A}
+  .title-hi{font-family:'Tiro Devanagari Sanskrit',serif;font-size:1.18rem;color:#8B1A1A;font-weight:700;line-height:1.3}
   .main-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem .7rem;border-bottom:2px dashed #C0892A;background:#FFF9EE;gap:.5rem}
   .circle-badge{width:56px;height:56px;border-radius:50%;border:2.5px solid #8B1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;padding:.2rem}
   .circle-badge .cb-lbl{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.65rem;font-weight:700;line-height:1.2}
   .circle-badge .cb-amt{font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700}
   .temple-center{text-align:center;flex:1;padding:0 .3rem}
   .temple-name{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.95rem;color:#8B1A1A;font-weight:700;line-height:1.4}
+  .temple-navratri{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.58rem;color:#8B1A1A;margin-top:.18rem;line-height:1.45;text-align:center}
   .meta-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem .75rem;border-bottom:1px solid #E8D5A0;background:#FFFDF5}
   .kra-wrap{display:flex;align-items:baseline;gap:.3rem}
   .kra-label{font-family:'Tiro Devanagari Sanskrit',serif;font-size:.7rem;color:#666}
@@ -1127,26 +1139,18 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   .btn-close{background:#e5e7eb;color:#374151}
   .btn:hover{opacity:.85}
   .btn:disabled{opacity:.55;cursor:not-allowed}
-  @media print{
-    body{background:#fff;padding:0;display:block}
-    .btn-row{display:none!important}
-    .receipt{box-shadow:none;width:100%;max-width:none}
-  }
+  @media print{body{background:#fff;padding:0;display:block}.btn-row{display:none!important}.receipt{box-shadow:none;width:100%;max-width:none}}
   @media(max-width:480px){.receipt{width:100%}.btn-row{gap:.4rem}.btn{padding:.55rem .85rem;font-size:.78rem}}
 </style>
 </head>
 <body>
 <div class="receipt" id="receiptEl">
   <div class="top-strip">
-    <span>जय माता दी</span>
-    <span>जय मां बीजासन</span>
-    <span>जय माता दी</span>
+    <span>जय माता दी</span><span>जय मां बीजासन</span><span>जय माता दी</span>
   </div>
-
   <div class="title-row">
     <div class="title-hi">सर्वमनोकामना पूर्ति अखंड ज्योति</div>
   </div>
-
   <div class="main-row">
     <div class="circle-badge" style="${gheeCircle}">
       <span class="cb-lbl" style="${gheeTxt}">घृत</span>
@@ -1154,13 +1158,16 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
     </div>
     <div class="temple-center">
       <div class="temple-name">श्री माता बाग मंदिर कुरवाई</div>
+      <div class="temple-navratri">
+        रौद्र नाम संवत्सरीयम् चैत्रीय नवरात्रि<br/>
+        19/03/2026 से 27/03/2026
+      </div>
     </div>
     <div class="circle-badge" style="${telCircle}">
       <span class="cb-lbl" style="${telTxt}">तेल</span>
       <span class="cb-amt" style="${telTxt}">${telAmt}</span>
     </div>
   </div>
-
   <div class="meta-row">
     <div class="kra-wrap">
       <span class="kra-label">कं.</span>
@@ -1171,33 +1178,27 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
       <div class="date-val">${date}</div>
     </div>
   </div>
-
   <div class="field-row">
     <span class="f-label">सु/श्री/श्रीमति</span>
     <span class="f-val">${donor.nameHindi}</span>
   </div>
-
   <div class="field-row" style="gap:.5rem">
     <span class="f-label">शहर</span>
     <span class="f-val" style="max-width:110px">${donor.city || "—"}</span>
     <span class="f-label" style="margin-left:.5rem">मोबाइल नं.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.82rem">${donor.mobile || "—"}</span>
   </div>
-
   <div class="field-row">
     <span class="f-label">रसीद नं.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.receipt}</span>
     <span class="f-label" style="margin-left:.5rem">ज्योति क्र.</span>
     <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.jyotiNo}</span>
   </div>
-
   <div class="amount-note">
     अन्य राशि (विवरण जैसे घृत, सामग्री, निर्माण कार्य, मंदिर, नवरात्र महोत्सव) ...
     अन्य कार्य— <strong>${amtStr || "—"}</strong>
   </div>
-
   <div class="thankyou">!!मंदिर हेतु दान स्वरूप राशि सधन्यवाद प्राप्त किये!!</div>
-
   <div class="sig-row">
     <div class="sig-left">
       <div>ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
@@ -1214,7 +1215,6 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
       <div class="sig-sublabel">अध्यक्ष, माता बाग मंदिर समिति</div>
     </div>
   </div>
-
   <div class="bot-strip">matabaagmandir.com &nbsp;·&nbsp; जय माता दी 🙏</div>
 </div>
 
@@ -1231,7 +1231,6 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
     btn.textContent = '⏳ Please wait...';
     btn.disabled = true;
     try {
-      // Wait for fonts to load before capturing
       await document.fonts.ready;
       const receipt = document.getElementById('receiptEl');
       const canvas  = await html2canvas(receipt, {
@@ -1241,7 +1240,6 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
         backgroundColor: '#FFF9EE',
         logging: false,
         onclone: (clonedDoc) => {
-          // Hide buttons in the cloned doc so they don't appear in screenshot
           const row = clonedDoc.querySelector('.btn-row');
           if (row) row.style.display = 'none';
         }
@@ -1261,10 +1259,11 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
 </html>`;
 
   const receiptBlob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(receiptBlob);
-  const win = window.open(url, "_blank", "width=520,height=800");
-  if (win) win.onload = () => URL.revokeObjectURL(url);
+  const receiptUrl = URL.createObjectURL(receiptBlob);
+  const win = window.open(receiptUrl, "_blank", "width=520,height=800");
+  if (win) win.onload = () => URL.revokeObjectURL(receiptUrl);
 }
+
 // ── FLOATING PETALS ───────────────────────────────────────────────────────────
 function FloatingPetals() {
   const items = [
@@ -1298,7 +1297,6 @@ function Header() {
   return (
     <header className="hdr">
       <div className="hdr-in">
-        {/* Replace with: <img src="/temple.jpg" alt="Mata Bag" /> */}
         <div className="img-slot">
           <img src="./matarani.png" alt="" />
         </div>
@@ -1378,6 +1376,7 @@ interface DonorCardProps {
 }
 
 function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
+  const effectiveAmt = getEffectiveAmount(donor);
   return (
     <div
       className="donor-card"
@@ -1420,6 +1419,19 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
         >
           {donor.series === "A" ? "Ghee (A)" : "Tail New (B)"}
         </span>
+        {/* Amount badge */}
+        {effectiveAmt > 0 && (
+          <span
+            className="tag tag-perm"
+            style={{
+              fontFamily: "'DM Sans',sans-serif",
+              fontWeight: 700,
+              letterSpacing: ".01em",
+            }}
+          >
+            ₹{effectiveAmt.toLocaleString("hi-IN")}/-
+          </span>
+        )}
         {donor.mobile && (
           <span className="tag tag-phone">
             <Phone size={10} />
@@ -1438,6 +1450,8 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
       document.body.style.overflow = "";
     };
   }, []);
+
+  const effectiveAmt = getEffectiveAmount(donor);
 
   type ModalRow = [ReactNode, string, string | number];
   const rows: ModalRow[] = [
@@ -1471,12 +1485,12 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
       "स्थिति / Status",
       donor.status || "Registered",
     ],
-    ...(donor.amount
+    ...(effectiveAmt > 0
       ? [
           [
             <Heart key="a" size={13} color="#A87D4A" />,
             "राशि / Amount",
-            "₹" + donor.amount.toLocaleString("hi-IN"),
+            `₹${effectiveAmt.toLocaleString("hi-IN")}`,
           ] as ModalRow,
         ]
       : []),
@@ -1542,8 +1556,9 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     city: "",
     amount: "701",
     category: "tel-jyoti",
-    notes: "",
+    utr: "",
   });
+  const [utrError, setUtrError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -1565,21 +1580,54 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
 
   const selectedType = DONATION_TYPES.find((d) => d.value === fd.category);
   const isFixed = !!selectedType?.amount;
+  // UTR = 12-digit numeric (bank NEFT/RTGS) OR alphanumeric 8-22 chars (UPI ref)
+  function validateUTR(utr: string): { valid: boolean; message: string } {
+    const trimmed = utr.trim();
+    if (!trimmed)
+      return { valid: false, message: "कृपया UTR / Transaction ID दर्ज करें" };
+    if (trimmed.length < 8)
+      return { valid: false, message: "UTR कम से कम 8 अक्षर का होना चाहिए" };
+    if (trimmed.length > 22)
+      return { valid: false, message: "UTR अधिकतम 22 अक्षर का होना चाहिए" };
+    if (!/^[a-zA-Z0-9]+$/.test(trimmed))
+      return {
+        valid: false,
+        message:
+          "UTR में केवल अक्षर और अंक होने चाहिए (कोई स्पेस या चिह्न नहीं)",
+      };
+    return { valid: true, message: "" };
+  }
+  // Validate UTR live as user types
+  const handleUtrChange = (val: string) => {
+    // Only allow alphanumeric, no spaces
+    const cleaned = val.replace(/[^a-zA-Z0-9]/g, "");
+    setFd((prev) => ({ ...prev, utr: cleaned }));
+    if (cleaned.length > 0) {
+      const { message } = validateUTR(cleaned);
+      setUtrError(message);
+    } else {
+      setUtrError("");
+    }
+  };
 
   const handlePhonePeRedirect = () => {
     if (PHONEPE_LINK) {
       window.open(PHONEPE_LINK, "_blank");
       return;
     }
-    if (UPI_ID && fd.amount) {
-      window.location.href = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${fd.amount}&cu=INR&tn=Donation+Mata+Bag+Mandir`;
+    if (UPI_ID) {
+      const amt = fd.amount || "0";
+      const link = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=Donation+Mata+Bag+Mandir+Kurwai`;
+      window.location.href = link;
     } else {
-      showToast("कृपया पहले राशि दर्ज करें", "info");
+      showToast("UPI ID not configured. Please contact admin.", "info");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
     if (!fd.name.trim()) {
       showToast("कृपया नाम दर्ज करें", "error");
       return;
@@ -1590,6 +1638,14 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     }
     if (!fd.amount) {
       showToast("कृपया दान राशि दर्ज करें", "error");
+      return;
+    }
+
+    // UTR is required — block submit if missing or invalid
+    const utrCheck = validateUTR(fd.utr);
+    if (!utrCheck.valid) {
+      setUtrError(utrCheck.message);
+      showToast(utrCheck.message, "error");
       return;
     }
 
@@ -1700,7 +1756,7 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               />
             </div>
 
-            {/* Donation type — radio cards */}
+            {/* Donation type radio cards */}
             <div className="form-group">
               <label>दान का प्रकार *</label>
               <div
@@ -1788,7 +1844,7 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               </div>
             </div>
 
-            {/* Amount — locked for fixed types */}
+            {/* Amount */}
             <div className="form-group">
               <label>दान राशि (₹) / Amount</label>
               <input
@@ -1826,33 +1882,10 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               )}
             </div>
 
-            {/* Notes */}
-            <div className="form-group">
-              <label>संदेश / Note (ऑप्शनल)</label>
-              <textarea
-                className="form-textarea"
-                placeholder="कोई संदेश हो तो लिखें..."
-                value={fd.notes}
-                onChange={(e) => setFd({ ...fd, notes: e.target.value })}
-              />
-            </div>
-
-            <button className="submit-btn" type="submit" disabled={submitting}>
-              {submitting ? (
-                <>
-                  <RefreshCw size={16} className="spin" /> पंजीकरण हो रहा है...
-                </>
-              ) : (
-                <>
-                  <Heart size={16} /> दान पंजीकरण करें
-                </>
-              )}
-            </button>
-
-            {/* PhonePe / UPI section */}
+            {/* Payment section — BEFORE UTR so user pays first */}
             <div className="payment-section">
               <div className="payment-title">
-                <CreditCard size={14} /> भुगतान विकल्प / Payment Options
+                <CreditCard size={14} /> पहले भुगतान करें / Pay First
               </div>
               <div className="payment-apps">
                 <button
@@ -1872,16 +1905,130 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               </div>
               <div className="payment-divider" />
               <p className="payment-note">
-                <strong>📌 महत्वपूर्ण:</strong> पहले ऊपर पंजीकरण करें, फिर
-                PhonePe / UPI से भुगतान करें। Admin द्वारा सत्यापन के बाद रसीद
-                वेबसाइट पर दिखेगी।
+                <strong>📌 Step 1:</strong> ऊपर से भुगतान करें।
+                <br />
+                <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR / Transaction
+                ID नीचे दर्ज करें।
               </p>
-              {!PHONEPE_LINK && !UPI_ID && (
-                <p className="demo-note">
-                  Admin: Set PHONEPE_LINK or UPI_ID in index.tsx
+            </div>
+
+            {/* UTR / Transaction ID — Required */}
+            <div className="form-group" style={{ marginTop: ".75rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: ".4rem" }}
+              >
+                UTR / Transaction ID *
+                <span
+                  style={{
+                    fontSize: ".62rem",
+                    background: "#FEF2F2",
+                    color: "#B91C1C",
+                    padding: ".1rem .45rem",
+                    borderRadius: "999px",
+                    fontWeight: 700,
+                    fontFamily: "'DM Sans', sans-serif",
+                    border: "1px solid #FECACA",
+                  }}
+                >
+                  आवश्यक / Required
+                </span>
+              </label>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="e.g. 425318762345 या UPI ref number"
+                value={fd.utr}
+                maxLength={22}
+                onChange={(e) => handleUtrChange(e.target.value)}
+                style={{
+                  borderColor: utrError
+                    ? "#EF4444"
+                    : fd.utr && !utrError
+                      ? "#22C55E"
+                      : undefined,
+                  background: utrError
+                    ? "#FEF2F2"
+                    : fd.utr && !utrError
+                      ? "#F0FDF4"
+                      : undefined,
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 600,
+                  letterSpacing: ".04em",
+                }}
+              />
+              {/* Live feedback */}
+              {utrError && (
+                <p
+                  style={{
+                    fontSize: ".72rem",
+                    color: "#B91C1C",
+                    marginTop: ".28rem",
+                    fontFamily: "'DM Sans', sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: ".3rem",
+                  }}
+                >
+                  <AlertCircle size={13} /> {utrError}
                 </p>
               )}
+              {fd.utr && !utrError && (
+                <p
+                  style={{
+                    fontSize: ".72rem",
+                    color: "#15803D",
+                    marginTop: ".28rem",
+                    fontFamily: "'DM Sans', sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: ".3rem",
+                  }}
+                >
+                  <CheckCircle size={13} /> UTR सत्यापित — {fd.utr.length} अक्षर
+                </p>
+              )}
+              <p
+                style={{
+                  fontSize: ".68rem",
+                  color: "var(--text-muted)",
+                  marginTop: ".25rem",
+                  fontFamily: "'DM Sans', sans-serif",
+                  lineHeight: 1.4,
+                }}
+              >
+                PhonePe / GPay / Paytm में भुगतान के बाद Transaction ID या UTR
+                नंबर मिलता है। यह 8–22 अक्षर का अंक/अक्षर होता है।
+              </p>
             </div>
+
+            <button
+              className="submit-btn"
+              type="submit"
+              disabled={submitting || !!utrError || !fd.utr}
+            >
+              {submitting ? (
+                <>
+                  <RefreshCw size={16} className="spin" /> पंजीकरण हो रहा है...
+                </>
+              ) : (
+                <>
+                  <Heart size={16} /> दान पंजीकरण करें
+                </>
+              )}
+            </button>
+            {!fd.utr && (
+              <p
+                style={{
+                  fontSize: ".72rem",
+                  color: "#92400E",
+                  textAlign: "center",
+                  marginTop: ".4rem",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                ⚠️ UTR / Transaction ID दर्ज करने के बाद ही Submit होगा
+              </p>
+            )}
           </form>
         )}
       </div>
@@ -1894,11 +2041,9 @@ function BlessingsSection() {
   return (
     <div className="blessings-section">
       <div className="photo-grid">
-        {/* Replace with: <img src="/jyoti.jpg" alt="Akhand Jyoti" /> */}
         <div className="photo-frame">
           <img src="./jyoti.png" alt="" />
         </div>
-        {/* Replace with: <img src="/mata.jpg" alt="Mata Ji" /> */}
         <div className="photo-frame">
           <img src="./matarani.png" alt="" />
         </div>
@@ -1916,7 +2061,6 @@ function AdhyakshSection() {
   return (
     <div className="adhyaksh-section">
       <div className="adhyaksh-inner">
-        {/* Replace with: <img src="/pandit-ji.jpg" alt="Pandit Ji" /> */}
         <div className="adhyaksh-img">
           <img src="./main.png" alt="" />
         </div>
@@ -1984,12 +2128,10 @@ export default function Home() {
   const [searchName, setSearchName] = useState("");
   const [searchMobile, setSearchMobile] = useState("");
   const [searchReceipt, setSearchReceipt] = useState("");
-
   const [series, setSeries] = useState<SeriesFilter>("all");
   const [type, setType] = useState<TypeFilter>("all");
   const [alpha, setAlpha] = useState("");
   const [alphaMode, setAlphaMode] = useState<AlphaMode>("hindi");
-
   const [page, setPage] = useState(1);
 
   const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
@@ -1997,7 +2139,7 @@ export default function Home() {
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Fetch live data
+  // ── Fetch live data + normalize type field ────────────────────────────────
   useEffect(() => {
     if (!SCRIPT_URL) return;
     setLoading(true);
@@ -2005,8 +2147,13 @@ export default function Home() {
       .then((r) => r.json())
       .then((data: unknown) => {
         if (Array.isArray(data) && data.length > 0) {
-          setDonors(data as Donor[]);
-          showToast(`${(data as Donor[]).length} भक्त लोड हुए`, "success");
+          // FIX: normalize type so "स्थाई" → "Permanent"
+          const normalized = (data as Donor[]).map((d) => ({
+            ...d,
+            type: normalizeType(d.type),
+          }));
+          setDonors(normalized);
+          showToast(`${normalized.length} भक्त लोड हुए`, "success");
         }
       })
       .catch(() =>
@@ -2019,7 +2166,7 @@ export default function Home() {
     setPage(1);
   }, [searchName, searchMobile, searchReceipt, series, type, alpha, alphaMode]);
 
-  // ── FLEXIBLE SEARCH — substring anywhere, multi-word support
+  // ── Flexible search ───────────────────────────────────────────────────────
   const filtered = useMemo<Donor[]>(() => {
     return donors.filter((d) => {
       if (!d?.nameHindi || !d?.nameEnglish) return false;
@@ -2029,17 +2176,12 @@ export default function Home() {
         const words = q.split(/\s+/).filter(Boolean);
         const nh = d.nameHindi.toLowerCase();
         const ne = d.nameEnglish.toLowerCase();
-
-        // Single term: substring anywhere in either name
-        const directMatch = nh.includes(q) || ne.includes(q);
-
-        // Multi-word: every word must appear somewhere
+        const direct = nh.includes(q) || ne.includes(q);
         const allWords =
           words.length > 1
             ? words.every((w) => nh.includes(w) || ne.includes(w))
             : false;
-
-        if (!directMatch && !allWords) return false;
+        if (!direct && !allWords) return false;
       }
 
       if (searchMobile && !d.mobile.includes(searchMobile.trim())) return false;
@@ -2048,7 +2190,6 @@ export default function Home() {
       if (series !== "all" && d.series !== series) return false;
       if (type !== "all" && d.type !== type) return false;
 
-      // Alphabet: substring anywhere (not just prefix)
       if (alpha) {
         if (alphaMode === "hindi" && !d.nameHindi.includes(alpha)) return false;
         if (
@@ -2057,7 +2198,6 @@ export default function Home() {
         )
           return false;
       }
-
       return true;
     });
   }, [
@@ -2092,7 +2232,6 @@ export default function Home() {
     setPage(1);
   };
 
-  // Mobile UX: scroll to results on Enter
   const scrollToResults = useCallback(() => {
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({
@@ -2140,13 +2279,12 @@ export default function Home() {
 
       <ToastContainer toasts={toasts} />
       <FloatingPetals />
-
       <Header />
       <SpecialMentionBanner />
       <Marquee donors={donors} />
 
       <main className="main">
-        {/* ── SEARCH ── */}
+        {/* SEARCH */}
         <div className="search-box">
           <div className="search-title">
             <Search size={18} color="#C2410C" /> कृपया नाम सर्च करें
@@ -2218,7 +2356,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── FILTERS ── */}
+        {/* FILTERS */}
         <div className="filters">
           <div className="filter-group">
             <div className="filter-label">
@@ -2303,7 +2441,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── RESULT COUNT ── */}
+        {/* RESULT COUNT */}
         <div className="result-count" ref={resultsRef}>
           <Users size={14} color="#C2410C" />
           &nbsp;<strong>{filtered.length}</strong> / {donors.length} भक्त मिले
@@ -2314,7 +2452,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* ── GRID ── */}
+        {/* GRID */}
         {loading ? (
           <div
             style={{ textAlign: "center", padding: "3rem", color: "#A87D4A" }}

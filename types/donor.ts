@@ -21,7 +21,7 @@ export interface DonationFormData {
   city: string;
   amount: string;
   category: string;
-  notes: string;
+  utr: string;
 }
 
 export type AlphaMode = "hindi" | "english";
