@@ -1657,7 +1657,11 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ ...fd, timestamp: new Date().toISOString() }),
+          body: JSON.stringify({
+            ...fd,
+            notes: fd.utr,
+            timestamp: new Date().toISOString(),
+          }),
         });
       } else {
         await new Promise((r) => setTimeout(r, 1000));
@@ -1885,28 +1889,44 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
 
             {/* Payment section — BEFORE UTR so user pays first */}
             <div className="payment-section">
-              <div className="payment-title">
-                <CreditCard size={14} /> पहले भुगतान करें / Pay First
-              </div>
-              <div className="payment-apps">
-                <button
-                  type="button"
-                  className="pay-btn primary"
-                  onClick={handlePhonePeRedirect}
+              <div style={{ textAlign: "center" }}>
+                <img
+                  src="./qr.png"
+                  alt="UPI QR Code"
+                  id="qrImg"
+                  style={{
+                    maxWidth: "220px",
+                    width: "100%",
+                    borderRadius: "8px",
+                    border: "2px solid #8B1A1A",
+                  }}
+                />
+                <br />
+                <a
+                  href="./qr.png"
+                  download="MatabagMandir-UPI-QR.png"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: ".4rem",
+                    marginTop: ".55rem",
+                    padding: ".42rem 1rem",
+                    background: "#7C1A02",
+                    color: "#fff",
+                    borderRadius: "999px",
+                    fontSize: ".78rem",
+                    fontWeight: 700,
+                    fontFamily: "'DM Sans', sans-serif",
+                    textDecoration: "none",
+                  }}
                 >
-                  <Smartphone size={14} /> PhonePe से भुगतान
-                </button>
-                <button
-                  type="button"
-                  className="pay-btn"
-                  onClick={handlePhonePeRedirect}
-                >
-                  <QrCode size={14} /> UPI Pay
-                </button>
+                  <Download size={14} /> QR Download करें
+                </a>
               </div>
               <div className="payment-divider" />
               <p className="payment-note">
-                <strong>📌 Step 1:</strong> ऊपर से भुगतान करें।
+                <strong>📌 Step 1:</strong> QR Scan करें या Download करके किसी
+                भी UPI App से भुगतान करें।
                 <br />
                 <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR / Transaction
                 ID नीचे दर्ज करें।
