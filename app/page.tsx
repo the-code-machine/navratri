@@ -1610,18 +1610,25 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     }
   };
 
-  const handlePhonePeRedirect = () => {
-    if (PHONEPE_LINK) {
+  // Replace the single handlePhonePeRedirect with per-app handlers
+  const buildUpiUrl = (scheme: string) => {
+    const amt = fd.amount || "0";
+    const base = `pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent("Donation Mata Bag Mandir Kurwai")}`;
+    return `${scheme}${base}`;
+  };
+
+  const openUpiApp = (app: "phonepe" | "gpay" | "paytm" | "generic") => {
+    if (PHONEPE_LINK && app === "phonepe") {
       window.open(PHONEPE_LINK, "_blank");
       return;
     }
-    if (UPI_ID) {
-      const amt = fd.amount || "0";
-      const link = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=Donation+Mata+Bag+Mandir+Kurwai`;
-      window.location.href = link;
-    } else {
-      showToast("UPI ID not configured. Please contact admin.", "info");
-    }
+    const urls: Record<string, string> = {
+      phonepe: buildUpiUrl("phonepe://pay?"),
+      gpay: buildUpiUrl("tez://upi/pay?"),
+      paytm: buildUpiUrl("paytmmp://pay?"),
+      generic: buildUpiUrl("upi://pay?"),
+    };
+    window.location.href = urls[app];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1887,25 +1894,113 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               <div className="payment-title">
                 <CreditCard size={14} /> पहले भुगतान करें / Pay First
               </div>
-              <div className="payment-apps">
+
+              {/* Individual app buttons — each uses its own URL scheme */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: ".5rem",
+                  marginBottom: ".6rem",
+                }}
+              >
+                {/* PhonePe */}
                 <button
                   type="button"
-                  className="pay-btn primary"
-                  onClick={handlePhonePeRedirect}
+                  onClick={() => openUpiApp("phonepe")}
+                  style={{
+                    padding: ".55rem .5rem",
+                    borderRadius: "8px",
+                    border: "1.5px solid #5F259F",
+                    background: "#F5F0FC",
+                    color: "#5F259F",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 700,
+                    fontSize: ".8rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: ".4rem",
+                  }}
                 >
-                  <Smartphone size={14} /> PhonePe से भुगतान
+                  <span style={{ fontSize: "1rem" }}>🟣</span> PhonePe
                 </button>
+
+                {/* Google Pay */}
                 <button
                   type="button"
-                  className="pay-btn"
-                  onClick={handlePhonePeRedirect}
+                  onClick={() => openUpiApp("gpay")}
+                  style={{
+                    padding: ".55rem .5rem",
+                    borderRadius: "8px",
+                    border: "1.5px solid #1A73E8",
+                    background: "#EEF4FE",
+                    color: "#1A73E8",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 700,
+                    fontSize: ".8rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: ".4rem",
+                  }}
                 >
-                  <QrCode size={14} /> UPI Pay
+                  <span style={{ fontSize: "1rem" }}>🔵</span> Google Pay
+                </button>
+
+                {/* Paytm */}
+                <button
+                  type="button"
+                  onClick={() => openUpiApp("paytm")}
+                  style={{
+                    padding: ".55rem .5rem",
+                    borderRadius: "8px",
+                    border: "1.5px solid #00B9F1",
+                    background: "#E6F9FF",
+                    color: "#007BB5",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 700,
+                    fontSize: ".8rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: ".4rem",
+                  }}
+                >
+                  <span style={{ fontSize: "1rem" }}>🔷</span> Paytm
+                </button>
+
+                {/* Any other UPI app */}
+                <button
+                  type="button"
+                  onClick={() => openUpiApp("generic")}
+                  style={{
+                    padding: ".55rem .5rem",
+                    borderRadius: "8px",
+                    border: "1.5px solid var(--border)",
+                    background: "#FAFAFA",
+                    color: "var(--text-sub)",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 700,
+                    fontSize: ".8rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: ".4rem",
+                  }}
+                >
+                  <span style={{ fontSize: "1rem" }}>📱</span> अन्य UPI App
                 </button>
               </div>
+
               <div className="payment-divider" />
               <p className="payment-note">
-                <strong>📌 Step 1:</strong> ऊपर से भुगतान करें।
+                <strong>📌 Step 1:</strong> ऊपर अपना UPI App चुनें और भुगतान
+                करें।
                 <br />
                 <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR / Transaction
                 ID नीचे दर्ज करें।
