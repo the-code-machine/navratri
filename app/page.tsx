@@ -37,7 +37,6 @@ import {
   AlertCircle,
   Info,
   Download,
-  CreditCard,
   QrCode,
   Smartphone,
 } from "lucide-react";
@@ -989,7 +988,6 @@ const HINDI_ALPHA = [
 ];
 const ENG_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-// ── FIX 1: Normalize type field from Sheets (handles Hindi "स्थाई") ──────────
 function normalizeType(t: string): "Permanent" | "New" {
   const s = (t || "").trim();
   if (s === "स्थाई" || s === "Permanent" || s.toLowerCase() === "permanent") {
@@ -998,8 +996,6 @@ function normalizeType(t: string): "Permanent" | "New" {
   return "New";
 }
 
-// ── FIX 2: Infer amount from series if amount is 0 ───────────────────────────
-// Series A = Ghee ₹1801, Series B = Tel ₹701
 function getEffectiveAmount(donor: Donor): number {
   if (donor.amount && donor.amount > 0) return donor.amount;
   if (donor.series === "A") return 1801;
@@ -1048,7 +1044,6 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   const now = new Date();
   const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
 
-  // Fetch signature → base64 so it works inside blob URL
   let signatureSrc = "";
   try {
     const res = await fetch("/signature.png");
@@ -1068,7 +1063,6 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
     effectiveAmt > 0 ? `₹${effectiveAmt.toLocaleString("hi-IN")}/-` : "";
 
   const cat = (donor.notes || "").toLowerCase();
-  // FIX: also detect from series
   const isGhee =
     cat.includes("ghee") || donor.amount === 1801 || donor.series === "A";
   const isTel =
@@ -1265,6 +1259,197 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   if (win) win.onload = () => URL.revokeObjectURL(receiptUrl);
 }
 
+// ── QR MODAL ──────────────────────────────────────────────────────────────────
+function QRModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  const handleDownload = async () => {
+    try {
+      const res = await fetch("/qr.png");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "MatabagMandir-UPI-QR.png";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // fallback: open in new tab
+      window.open("/qr.png", "_blank");
+    }
+  };
+
+  return (
+    <div
+      className="overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      style={{ zIndex: 9999 }}
+    >
+      <div
+        className="modal"
+        style={{
+          maxWidth: "340px",
+          padding: "1.5rem 1.25rem 1.25rem",
+          textAlign: "center",
+        }}
+      >
+        <button className="modal-close" onClick={onClose}>
+          <X size={14} />
+        </button>
+
+        {/* Header */}
+        <div
+          style={{
+            background: "#8B1A1A",
+            borderRadius: "10px 10px 0 0",
+            padding: ".6rem .75rem",
+            margin: "-1.5rem -1.25rem 1rem",
+          }}
+        >
+          <p
+            style={{
+              color: "#FFD700",
+              fontFamily: "'Tiro Devanagari Sanskrit', serif",
+              fontSize: "1rem",
+              fontWeight: 700,
+            }}
+          >
+            🙏 UPI QR कोड स्कैन करें
+          </p>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.85)",
+              fontSize: ".72rem",
+              marginTop: ".2rem",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            किसी भी UPI App से भुगतान करें
+          </p>
+        </div>
+
+        {/* QR Image */}
+        <div
+          style={{
+            border: "3px solid #8B1A1A",
+            borderRadius: "12px",
+            overflow: "hidden",
+            display: "inline-block",
+            marginBottom: ".9rem",
+          }}
+        >
+          <img
+            src="./qr.png"
+            alt="UPI QR Code — माता बाग मंदिर कुरवाई"
+            style={{
+              width: "220px",
+              height: "220px",
+              objectFit: "contain",
+              display: "block",
+              background: "#fff",
+            }}
+          />
+        </div>
+
+        {/* UPI ID */}
+        <div
+          style={{
+            background: "#FFF7ED",
+            border: "1px solid #FED7AA",
+            borderRadius: "8px",
+            padding: ".5rem .75rem",
+            marginBottom: ".9rem",
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          <p
+            style={{
+              fontSize: ".65rem",
+              color: "#92400E",
+              marginBottom: ".2rem",
+            }}
+          >
+            UPI ID
+          </p>
+          <p
+            style={{
+              fontSize: ".9rem",
+              fontWeight: 700,
+              color: "#7C2D12",
+              letterSpacing: ".03em",
+              userSelect: "all",
+            }}
+          >
+            {UPI_ID}
+          </p>
+        </div>
+
+        {/* Payee */}
+        <p
+          style={{
+            fontSize: ".72rem",
+            color: "#78350F",
+            marginBottom: "1rem",
+            fontFamily: "'Tiro Devanagari Sanskrit', serif",
+            lineHeight: 1.5,
+          }}
+        >
+          {PAYEE_NAME}
+        </p>
+
+        {/* Download button */}
+        <button
+          onClick={handleDownload}
+          style={{
+            width: "100%",
+            padding: ".62rem",
+            background: "#8B1A1A",
+            color: "#fff",
+            border: "none",
+            borderRadius: "10px",
+            fontFamily: "'DM Sans', sans-serif",
+            fontWeight: 700,
+            fontSize: ".88rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: ".45rem",
+            marginBottom: ".55rem",
+          }}
+        >
+          <Download size={16} /> QR Image Download करें
+        </button>
+
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%",
+            padding: ".55rem",
+            background: "#F3F4F6",
+            color: "#374151",
+            border: "none",
+            borderRadius: "10px",
+            fontFamily: "'DM Sans', sans-serif",
+            fontWeight: 600,
+            fontSize: ".85rem",
+            cursor: "pointer",
+          }}
+        >
+          बंद करें / Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── FLOATING PETALS ───────────────────────────────────────────────────────────
 function FloatingPetals() {
   const items = [
@@ -1420,7 +1605,6 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
         >
           {donor.series === "A" ? "Ghee (A)" : "Tail New (B)"}
         </span>
-        {/* Amount badge */}
         {effectiveAmt > 0 && (
           <span
             className="tag tag-perm"
@@ -1562,6 +1746,7 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
   const [utrError, setUtrError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -1581,7 +1766,7 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
 
   const selectedType = DONATION_TYPES.find((d) => d.value === fd.category);
   const isFixed = !!selectedType?.amount;
-  // UTR = 12-digit numeric (bank NEFT/RTGS) OR alphanumeric 8-22 chars (UPI ref)
+
   function validateUTR(utr: string): { valid: boolean; message: string } {
     const trimmed = utr.trim();
     if (!trimmed)
@@ -1598,9 +1783,8 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
       };
     return { valid: true, message: "" };
   }
-  // Validate UTR live as user types
+
   const handleUtrChange = (val: string) => {
-    // Only allow alphanumeric, no spaces
     const cleaned = val.replace(/[^a-zA-Z0-9]/g, "");
     setFd((prev) => ({ ...prev, utr: cleaned }));
     if (cleaned.length > 0) {
@@ -1611,14 +1795,18 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     }
   };
 
-  const handlePhonePeRedirect = () => {
+  // UPI deep link with customized thank you message using donor name
+  const handleUPIPayment = () => {
+    const amt = fd.amount || "0";
+    const donorName = fd.name.trim() || "भक्त";
+    const tnMsg = `Thank You ${donorName} for Your Donation - Mata Bag Mandir Kurwai`;
+
     if (PHONEPE_LINK) {
       window.open(PHONEPE_LINK, "_blank");
       return;
     }
     if (UPI_ID) {
-      const amt = fd.amount || "0";
-      const link = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(`Thank You ${fd.name} for Your Donation - Mata Bag Mandir Kurwai`)}`;
+      const link = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(tnMsg)}`;
       window.location.href = link;
     } else {
       showToast("UPI ID not configured. Please contact admin.", "info");
@@ -1627,8 +1815,6 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validation
     if (!fd.name.trim()) {
       showToast("कृपया नाम दर्ज करें", "error");
       return;
@@ -1641,8 +1827,6 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
       showToast("कृपया दान राशि दर्ज करें", "error");
       return;
     }
-
-    // UTR is required — block submit if missing or invalid
     const utrCheck = validateUTR(fd.utr);
     if (!utrCheck.valid) {
       setUtrError(utrCheck.message);
@@ -1676,384 +1860,500 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
   };
 
   return (
-    <div
-      className="overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="modal form-modal">
-        <button className="modal-close" onClick={onClose}>
-          <X size={14} />
-        </button>
+    <>
+      {/* QR Modal — opens on top of donation form */}
+      {showQR && <QRModal onClose={() => setShowQR(false)} />}
 
-        {success ? (
-          <div className="success-banner">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: ".7rem",
-              }}
-            >
-              <CheckCircle size={48} color="#15803D" />
-            </div>
-            <p style={{ fontWeight: 700, fontSize: "1rem" }}>
-              आपका दान पंजीकरण सफल हुआ!
-            </p>
-            <p style={{ marginTop: ".4rem", fontSize: ".88rem" }}>
-              Admin द्वारा भुगतान सत्यापन के बाद
-              <br />
-              आपकी रसीद वेबसाइट पर दिखेगी।
-            </p>
-            <p style={{ marginTop: ".5rem", fontSize: ".8rem", opacity: 0.7 }}>
-              जय माता दी 🙏
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <h2 className="form-title">
-              <Flame size={20} color="#C2410C" /> नया दान / New Donation
-            </h2>
+      <div
+        className="overlay"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="modal form-modal">
+          <button className="modal-close" onClick={onClose}>
+            <X size={14} />
+          </button>
 
-            {/* Name + Mobile */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: ".65rem",
-              }}
-            >
-              <div className="form-group">
-                <label>पूरा नाम *</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  required
-                  placeholder="आपका पूरा नाम"
-                  value={fd.name}
-                  onChange={(e) => setFd({ ...fd, name: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>मोबाइल नं. *</label>
-                <input
-                  className="form-input"
-                  type="tel"
-                  required
-                  maxLength={10}
-                  placeholder="10 अंक"
-                  value={fd.mobile}
-                  onChange={(e) => setFd({ ...fd, mobile: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* City */}
-            <div className="form-group">
-              <label>शहर / City</label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="आपका शहर / Your city"
-                value={fd.city}
-                onChange={(e) => setFd({ ...fd, city: e.target.value })}
-              />
-            </div>
-
-            {/* Donation type radio cards */}
-            <div className="form-group">
-              <label>दान का प्रकार *</label>
+          {success ? (
+            <div className="success-banner">
               <div
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  gap: ".4rem",
-                  marginTop: ".25rem",
+                  justifyContent: "center",
+                  marginBottom: ".7rem",
                 }}
               >
-                {DONATION_TYPES.map((opt) => (
-                  <label
-                    key={opt.value}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: ".55rem .9rem",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      border: `1.5px solid ${fd.category === opt.value ? "var(--primary)" : "var(--border)"}`,
-                      background:
-                        fd.category === opt.value ? "#FFF7F5" : "#FAFAFA",
-                      transition: "all .15s",
-                    }}
-                  >
-                    <span
+                <CheckCircle size={48} color="#15803D" />
+              </div>
+              <p style={{ fontWeight: 700, fontSize: "1rem" }}>
+                आपका दान पंजीकरण सफल हुआ!
+              </p>
+              <p style={{ marginTop: ".4rem", fontSize: ".88rem" }}>
+                Admin द्वारा भुगतान सत्यापन के बाद
+                <br />
+                आपकी रसीद वेबसाइट पर दिखेगी।
+              </p>
+              <p
+                style={{ marginTop: ".5rem", fontSize: ".8rem", opacity: 0.7 }}
+              >
+                जय माता दी 🙏
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <h2 className="form-title">
+                <Flame size={20} color="#C2410C" /> नया दान / New Donation
+              </h2>
+
+              {/* Name + Mobile */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: ".65rem",
+                }}
+              >
+                <div className="form-group">
+                  <label>पूरा नाम *</label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    required
+                    placeholder="आपका पूरा नाम"
+                    value={fd.name}
+                    onChange={(e) => setFd({ ...fd, name: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>मोबाइल नं. *</label>
+                  <input
+                    className="form-input"
+                    type="tel"
+                    required
+                    maxLength={10}
+                    placeholder="10 अंक"
+                    value={fd.mobile}
+                    onChange={(e) => setFd({ ...fd, mobile: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* City */}
+              <div className="form-group">
+                <label>शहर / City</label>
+                <input
+                  className="form-input"
+                  type="text"
+                  placeholder="आपका शहर / Your city"
+                  value={fd.city}
+                  onChange={(e) => setFd({ ...fd, city: e.target.value })}
+                />
+              </div>
+
+              {/* Donation type radio cards */}
+              <div className="form-group">
+                <label>दान का प्रकार *</label>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: ".4rem",
+                    marginTop: ".25rem",
+                  }}
+                >
+                  {DONATION_TYPES.map((opt) => (
+                    <label
+                      key={opt.value}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: ".5rem",
+                        justifyContent: "space-between",
+                        padding: ".55rem .9rem",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        border: `1.5px solid ${fd.category === opt.value ? "var(--primary)" : "var(--border)"}`,
+                        background:
+                          fd.category === opt.value ? "#FFF7F5" : "#FAFAFA",
+                        transition: "all .15s",
                       }}
                     >
-                      <input
-                        type="radio"
-                        name="category"
-                        value={opt.value}
-                        checked={fd.category === opt.value}
-                        onChange={() => handleCategoryChange(opt.value)}
-                        style={{
-                          accentColor: "var(--primary)",
-                          width: "16px",
-                          height: "16px",
-                          cursor: "pointer",
-                        }}
-                      />
                       <span
                         style={{
-                          fontFamily: "'Tiro Devanagari Sanskrit', serif",
-                          fontSize: ".93rem",
-                          color: "var(--text)",
-                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: ".5rem",
                         }}
                       >
-                        {opt.label}
+                        <input
+                          type="radio"
+                          name="category"
+                          value={opt.value}
+                          checked={fd.category === opt.value}
+                          onChange={() => handleCategoryChange(opt.value)}
+                          style={{
+                            accentColor: "var(--primary)",
+                            width: "16px",
+                            height: "16px",
+                            cursor: "pointer",
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: "'Tiro Devanagari Sanskrit', serif",
+                            fontSize: ".93rem",
+                            color: "var(--text)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {opt.label}
+                        </span>
                       </span>
-                    </span>
-                    {opt.amount ? (
-                      <span
-                        style={{
-                          background: "var(--primary)",
-                          color: "#fff",
-                          padding: ".2rem .65rem",
-                          borderRadius: "999px",
-                          fontSize: ".73rem",
-                          fontWeight: 700,
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        ₹{Number(opt.amount).toLocaleString("hi-IN")}/-
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: ".72rem",
-                          color: "var(--text-muted)",
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        {opt.hint}
-                      </span>
-                    )}
-                  </label>
-                ))}
+                      {opt.amount ? (
+                        <span
+                          style={{
+                            background: "var(--primary)",
+                            color: "#fff",
+                            padding: ".2rem .65rem",
+                            borderRadius: "999px",
+                            fontSize: ".73rem",
+                            fontWeight: 700,
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          ₹{Number(opt.amount).toLocaleString("hi-IN")}/-
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: ".72rem",
+                            color: "var(--text-muted)",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          {opt.hint}
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Amount */}
-            <div className="form-group">
-              <label>दान राशि (₹) / Amount</label>
-              <input
-                className="form-input"
-                type="number"
-                min="1"
-                placeholder="₹ राशि दर्ज करें"
-                value={fd.amount}
-                readOnly={isFixed}
-                style={
-                  isFixed
-                    ? {
-                        background: "#F0FDF4",
-                        borderColor: "#86EFAC",
-                        color: "#15803D",
-                        fontWeight: 700,
-                      }
-                    : {}
-                }
-                onChange={(e) => {
-                  if (!isFixed) setFd({ ...fd, amount: e.target.value });
-                }}
-              />
-              {isFixed && (
-                <p
-                  style={{
-                    fontSize: ".7rem",
-                    color: "#15803D",
-                    marginTop: ".25rem",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  ✓ यह राशि निर्धारित है
-                </p>
-              )}
-            </div>
-
-            {/* Payment section — BEFORE UTR so user pays first */}
-            <div className="payment-section">
-              <div style={{ textAlign: "center" }}>
-                <img
-                  src="./qr.png"
-                  alt="UPI QR Code"
-                  id="qrImg"
-                  style={{
-                    maxWidth: "220px",
-                    width: "100%",
-                    borderRadius: "8px",
-                    border: "2px solid #8B1A1A",
+              {/* Amount */}
+              <div className="form-group">
+                <label>दान राशि (₹) / Amount</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="1"
+                  placeholder="₹ राशि दर्ज करें"
+                  value={fd.amount}
+                  readOnly={isFixed}
+                  style={
+                    isFixed
+                      ? {
+                          background: "#F0FDF4",
+                          borderColor: "#86EFAC",
+                          color: "#15803D",
+                          fontWeight: 700,
+                        }
+                      : {}
+                  }
+                  onChange={(e) => {
+                    if (!isFixed) setFd({ ...fd, amount: e.target.value });
                   }}
                 />
-                <br />
-                <a
-                  href="./qr.png"
-                  download="MatabagMandir-UPI-QR.png"
+                {isFixed && (
+                  <p
+                    style={{
+                      fontSize: ".7rem",
+                      color: "#15803D",
+                      marginTop: ".25rem",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    ✓ यह राशि निर्धारित है
+                  </p>
+                )}
+              </div>
+
+              {/* ── PAYMENT OPTIONS SECTION ───────────────────────────── */}
+              <div className="payment-section">
+                <p
                   style={{
-                    display: "inline-flex",
+                    textAlign: "center",
+                    fontFamily: "'Tiro Devanagari Sanskrit', serif",
+                    fontSize: ".88rem",
+                    color: "#7C2D12",
+                    fontWeight: 700,
+                    marginBottom: ".75rem",
+                  }}
+                >
+                  भुगतान का तरीका चुनें
+                </p>
+
+                {/* Two option buttons */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: ".65rem",
+                    marginBottom: ".75rem",
+                  }}
+                >
+                  {/* UPI App Button */}
+                  <button
+                    type="button"
+                    onClick={handleUPIPayment}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: ".35rem",
+                      padding: ".85rem .5rem",
+                      background:
+                        "linear-gradient(135deg, #8B1A1A 0%, #B91C1C 100%)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "12px",
+                      cursor: "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 700,
+                      fontSize: ".8rem",
+                      boxShadow: "0 2px 8px rgba(139,26,26,0.3)",
+                      transition: "opacity .15s",
+                    }}
+                  >
+                    <Smartphone size={22} />
+                    <span>UPI से भुगतान</span>
+                    <span
+                      style={{
+                        fontSize: ".65rem",
+                        fontWeight: 400,
+                        opacity: 0.85,
+                      }}
+                    >
+                      PhonePe / GPay / Paytm
+                    </span>
+                  </button>
+
+                  {/* QR Code Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowQR(true)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: ".35rem",
+                      padding: ".85rem .5rem",
+                      background:
+                        "linear-gradient(135deg, #1a5c3a 0%, #15803D 100%)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "12px",
+                      cursor: "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 700,
+                      fontSize: ".8rem",
+                      boxShadow: "0 2px 8px rgba(21,128,61,0.3)",
+                      transition: "opacity .15s",
+                    }}
+                  >
+                    <QrCode size={22} />
+                    <span>QR से भुगतान</span>
+                    <span
+                      style={{
+                        fontSize: ".65rem",
+                        fontWeight: 400,
+                        opacity: 0.85,
+                      }}
+                    >
+                      QR Code स्कैन करें
+                    </span>
+                  </button>
+                </div>
+
+                {/* Note: if UPI doesn't work use QR */}
+                <div
+                  style={{
+                    background: "#FFFBEB",
+                    border: "1px solid #FDE68A",
+                    borderRadius: "8px",
+                    padding: ".5rem .75rem",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: ".4rem",
+                  }}
+                >
+                  <AlertCircle
+                    size={14}
+                    color="#D97706"
+                    style={{ marginTop: "1px", flexShrink: 0 }}
+                  />
+                  <p
+                    style={{
+                      fontSize: ".7rem",
+                      color: "#92400E",
+                      fontFamily: "'DM Sans', sans-serif",
+                      lineHeight: 1.5,
+                      margin: 0,
+                    }}
+                  >
+                    <strong>नोट:</strong> यदि UPI App से भुगतान नहीं हो रहा तो{" "}
+                    <span
+                      style={{
+                        color: "#1a5c3a",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        textDecoration: "underline",
+                      }}
+                      onClick={() => setShowQR(true)}
+                    >
+                      QR Code
+                    </span>{" "}
+                    से भुगतान करें।
+                  </p>
+                </div>
+
+                <div className="payment-divider" />
+                <p className="payment-note">
+                  <strong>📌 Step 1:</strong> ऊपर दिए विकल्प से भुगतान करें।
+                  <br />
+                  <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR /
+                  Transaction ID नीचे दर्ज करें।
+                </p>
+              </div>
+
+              {/* UTR / Transaction ID */}
+              <div className="form-group" style={{ marginTop: ".75rem" }}>
+                <label
+                  style={{
+                    display: "flex",
                     alignItems: "center",
                     gap: ".4rem",
-                    marginTop: ".55rem",
-                    padding: ".42rem 1rem",
-                    background: "#7C1A02",
-                    color: "#fff",
-                    borderRadius: "999px",
-                    fontSize: ".78rem",
-                    fontWeight: 700,
-                    fontFamily: "'DM Sans', sans-serif",
-                    textDecoration: "none",
                   }}
                 >
-                  <Download size={14} /> QR Download करें
-                </a>
+                  UTR / Transaction ID *
+                  <span
+                    style={{
+                      fontSize: ".62rem",
+                      background: "#FEF2F2",
+                      color: "#B91C1C",
+                      padding: ".1rem .45rem",
+                      borderRadius: "999px",
+                      fontWeight: 700,
+                      fontFamily: "'DM Sans', sans-serif",
+                      border: "1px solid #FECACA",
+                    }}
+                  >
+                    आवश्यक / Required
+                  </span>
+                </label>
+                <input
+                  className="form-input"
+                  type="text"
+                  placeholder="e.g. 425318762345 या UPI ref number"
+                  value={fd.utr}
+                  maxLength={22}
+                  onChange={(e) => handleUtrChange(e.target.value)}
+                  style={{
+                    borderColor: utrError
+                      ? "#EF4444"
+                      : fd.utr && !utrError
+                        ? "#22C55E"
+                        : undefined,
+                    background: utrError
+                      ? "#FEF2F2"
+                      : fd.utr && !utrError
+                        ? "#F0FDF4"
+                        : undefined,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 600,
+                    letterSpacing: ".04em",
+                  }}
+                />
+                {utrError && (
+                  <p
+                    style={{
+                      fontSize: ".72rem",
+                      color: "#B91C1C",
+                      marginTop: ".28rem",
+                      fontFamily: "'DM Sans', sans-serif",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: ".3rem",
+                    }}
+                  >
+                    <AlertCircle size={13} /> {utrError}
+                  </p>
+                )}
+                {fd.utr && !utrError && (
+                  <p
+                    style={{
+                      fontSize: ".72rem",
+                      color: "#15803D",
+                      marginTop: ".28rem",
+                      fontFamily: "'DM Sans', sans-serif",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: ".3rem",
+                    }}
+                  >
+                    <CheckCircle size={13} /> UTR सत्यापित — {fd.utr.length}{" "}
+                    अक्षर
+                  </p>
+                )}
+                <p
+                  style={{
+                    fontSize: ".68rem",
+                    color: "var(--text-muted)",
+                    marginTop: ".25rem",
+                    fontFamily: "'DM Sans', sans-serif",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  PhonePe / GPay / Paytm में भुगतान के बाद Transaction ID या UTR
+                  नंबर मिलता है। यह 8–22 अक्षर का अंक/अक्षर होता है।
+                </p>
               </div>
-              <div className="payment-divider" />
-              <p className="payment-note">
-                <strong>📌 Step 1:</strong> QR Scan करें या Download करके किसी
-                भी UPI App से भुगतान करें।
-                <br />
-                <strong>📌 Step 2:</strong> भुगतान के बाद मिला UTR / Transaction
-                ID नीचे दर्ज करें।
-              </p>
-            </div>
 
-            {/* UTR / Transaction ID — Required */}
-            <div className="form-group" style={{ marginTop: ".75rem" }}>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: ".4rem" }}
+              <button
+                className="submit-btn"
+                type="submit"
+                disabled={submitting || !!utrError || !fd.utr}
               >
-                UTR / Transaction ID *
-                <span
-                  style={{
-                    fontSize: ".62rem",
-                    background: "#FEF2F2",
-                    color: "#B91C1C",
-                    padding: ".1rem .45rem",
-                    borderRadius: "999px",
-                    fontWeight: 700,
-                    fontFamily: "'DM Sans', sans-serif",
-                    border: "1px solid #FECACA",
-                  }}
-                >
-                  आवश्यक / Required
-                </span>
-              </label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="e.g. 425318762345 या UPI ref number"
-                value={fd.utr}
-                maxLength={22}
-                onChange={(e) => handleUtrChange(e.target.value)}
-                style={{
-                  borderColor: utrError
-                    ? "#EF4444"
-                    : fd.utr && !utrError
-                      ? "#22C55E"
-                      : undefined,
-                  background: utrError
-                    ? "#FEF2F2"
-                    : fd.utr && !utrError
-                      ? "#F0FDF4"
-                      : undefined,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: 600,
-                  letterSpacing: ".04em",
-                }}
-              />
-              {/* Live feedback */}
-              {utrError && (
+                {submitting ? (
+                  <>
+                    <RefreshCw size={16} className="spin" /> पंजीकरण हो रहा
+                    है...
+                  </>
+                ) : (
+                  <>
+                    <Heart size={16} /> दान पंजीकरण करें
+                  </>
+                )}
+              </button>
+              {!fd.utr && (
                 <p
                   style={{
                     fontSize: ".72rem",
-                    color: "#B91C1C",
-                    marginTop: ".28rem",
+                    color: "#92400E",
+                    textAlign: "center",
+                    marginTop: ".4rem",
                     fontFamily: "'DM Sans', sans-serif",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: ".3rem",
                   }}
                 >
-                  <AlertCircle size={13} /> {utrError}
+                  ⚠️ UTR / Transaction ID दर्ज करने के बाद ही Submit होगा
                 </p>
               )}
-              {fd.utr && !utrError && (
-                <p
-                  style={{
-                    fontSize: ".72rem",
-                    color: "#15803D",
-                    marginTop: ".28rem",
-                    fontFamily: "'DM Sans', sans-serif",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: ".3rem",
-                  }}
-                >
-                  <CheckCircle size={13} /> UTR सत्यापित — {fd.utr.length} अक्षर
-                </p>
-              )}
-              <p
-                style={{
-                  fontSize: ".68rem",
-                  color: "var(--text-muted)",
-                  marginTop: ".25rem",
-                  fontFamily: "'DM Sans', sans-serif",
-                  lineHeight: 1.4,
-                }}
-              >
-                PhonePe / GPay / Paytm में भुगतान के बाद Transaction ID या UTR
-                नंबर मिलता है। यह 8–22 अक्षर का अंक/अक्षर होता है।
-              </p>
-            </div>
-
-            <button
-              className="submit-btn"
-              type="submit"
-              disabled={submitting || !!utrError || !fd.utr}
-            >
-              {submitting ? (
-                <>
-                  <RefreshCw size={16} className="spin" /> पंजीकरण हो रहा है...
-                </>
-              ) : (
-                <>
-                  <Heart size={16} /> दान पंजीकरण करें
-                </>
-              )}
-            </button>
-            {!fd.utr && (
-              <p
-                style={{
-                  fontSize: ".72rem",
-                  color: "#92400E",
-                  textAlign: "center",
-                  marginTop: ".4rem",
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                ⚠️ UTR / Transaction ID दर्ज करने के बाद ही Submit होगा
-              </p>
-            )}
-          </form>
-        )}
+            </form>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -2160,7 +2460,6 @@ export default function Home() {
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch live data + normalize type field ────────────────────────────────
   useEffect(() => {
     if (!SCRIPT_URL) return;
     setLoading(true);
@@ -2168,7 +2467,6 @@ export default function Home() {
       .then((r) => r.json())
       .then((data: unknown) => {
         if (Array.isArray(data) && data.length > 0) {
-          // FIX: normalize type so "स्थाई" → "Permanent"
           const normalized = (data as Donor[]).map((d) => ({
             ...d,
             type: normalizeType(d.type),
@@ -2187,11 +2485,9 @@ export default function Home() {
     setPage(1);
   }, [searchName, searchMobile, searchReceipt, series, type, alpha, alphaMode]);
 
-  // ── Flexible search ───────────────────────────────────────────────────────
   const filtered = useMemo<Donor[]>(() => {
     return donors.filter((d) => {
       if (!d?.nameHindi || !d?.nameEnglish) return false;
-
       if (searchName) {
         const q = searchName.trim().toLowerCase();
         const words = q.split(/\s+/).filter(Boolean);
@@ -2204,13 +2500,11 @@ export default function Home() {
             : false;
         if (!direct && !allWords) return false;
       }
-
       if (searchMobile && !d.mobile.includes(searchMobile.trim())) return false;
       if (searchReceipt && !String(d.receipt).includes(searchReceipt.trim()))
         return false;
       if (series !== "all" && d.series !== series) return false;
       if (type !== "all" && d.type !== type) return false;
-
       if (alpha) {
         if (alphaMode === "hindi" && !d.nameHindi.includes(alpha)) return false;
         if (
