@@ -53,7 +53,7 @@ import { url } from "@/config";
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const SCRIPT_URL = url; // ← Google Apps Script Web App URL
 const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
-const UPI_ID = "choubeyji740-2@oksbi"; // ← UPI ID
+const UPI_ID = "9238669830@okbizaxis"; // ← UPI ID
 const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
 const PAGE_SIZE = 12;
 
