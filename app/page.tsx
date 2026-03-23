@@ -40,17 +40,39 @@ import {
   QrCode,
   Smartphone,
 } from "lucide-react";
-import type {
-  Donor,
-  DonationFormData,
-  AlphaMode,
-  SeriesFilter,
-  TypeFilter,
-} from "../types/donor";
-import { url } from "@/config";
+
+export type AlphaMode = "hindi" | "english";
+export type SeriesFilter = "all" | "A" | "B";
+export type TypeFilter = "all" | "Permanent" | "New";
+
+export interface Donor {
+  id: string;
+  series: string;
+  jyotiNo: number;
+  nameHindi: string;
+  nameEnglish: string;
+  city: string;
+  receipt: number;
+  mobile: string;
+  type: string;
+  amount: number;
+  status: string;
+  notes: string;
+}
+
+export interface DonationFormData {
+  name: string;
+  mobile: string;
+  city: string;
+  amount: string;
+  category: string;
+  utr: string;
+}
+
+import { url } from "@/config"; // Adjust path if needed or define SCRIPT_URL directly below
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const SCRIPT_URL = url; // ← Google Apps Script Web App URL
+const SCRIPT_URL = url || ""; // ← Google Apps Script Web App URL
 const PHONEPE_LINK = ""; // ← e.g. https://phon.pe/ru_YOURCODE
 const UPI_ID = "9238669830@okbizaxis"; // ← UPI ID
 const PAYEE_NAME = "श्री माता बाग मंदिर समिति कुरवाई";
@@ -1166,7 +1188,7 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   <div class="meta-row">
     <div class="kra-wrap">
       <span class="kra-label">कं.</span>
-      <span class="kra-num">${donor.jyotiNo}</span>
+      <span class="kra-num" style="${donor.jyotiNo === "Pending" ? "font-size:.8rem; color:#888" : ""}">${donor.jyotiNo}</span>
     </div>
     <div class="date-wrap">
       <div class="date-label">दिनांक</div>
@@ -1185,9 +1207,9 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   </div>
   <div class="field-row">
     <span class="f-label">रसीद नं.</span>
-    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.receipt}</span>
+    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700; ${donor.receipt === "Pending" ? "color:#888; font-size:.7rem" : ""}">${donor.receipt}</span>
     <span class="f-label" style="margin-left:.5rem">ज्योति क्र.</span>
-    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700">${donor.jyotiNo}</span>
+    <span class="f-val" style="font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700; ${donor.jyotiNo === "Pending" ? "color:#888; font-size:.7rem" : ""}">${donor.jyotiNo}</span>
   </div>
   <div class="amount-note">
     अन्य राशि (विवरण जैसे घृत, सामग्री, निर्माण कार्य, मंदिर, नवरात्र महोत्सव) ...
@@ -1196,7 +1218,7 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   <div class="thankyou">!!मंदिर हेतु दान स्वरूप राशि सधन्यवाद प्राप्त किये!!</div>
   <div class="sig-row">
     <div class="sig-left">
-      <div>ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
+      <div style="${donor.jyotiNo === "Pending" ? "font-size:.65rem; color:#888" : ""}">ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
       <div style="margin-top:.2rem">ज्योति राशि — <strong>${amtStr || "—"}</strong></div>
     </div>
     <div class="sig-right">
@@ -1795,7 +1817,6 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     }
   };
 
-  // UPI deep link with customized thank you message using donor name
   const handleUPIPayment = () => {
     const amt = fd.amount || "0";
     const donorName = fd.name.trim() || "भक्त";
@@ -1811,6 +1832,25 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
     } else {
       showToast("UPI ID not configured. Please contact admin.", "info");
     }
+  };
+
+  // --- NEW: Download Temporary Receipt Function ---
+  const handleDownloadTempReceipt = () => {
+    const tempDonor: Donor = {
+      id: "temp",
+      series: fd.category === "ghee-jyoti" ? "A" : "B",
+      jyotiNo: "Pending" as unknown as number, // Typescript workaround for the temporary receipt
+      nameHindi: fd.name,
+      nameEnglish: fd.name,
+      city: fd.city,
+      receipt: "Pending" as unknown as number,
+      mobile: fd.mobile,
+      type: "New",
+      amount: Number(fd.amount) || (fd.category === "ghee-jyoti" ? 1801 : 701),
+      status: "Verification Pending",
+      notes: fd.utr,
+    };
+    void openDigitalReceipt(tempDonor);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1852,7 +1892,8 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
       }
       setSuccess(true);
       showToast("दान पंजीकरण सफल! Admin जल्द सत्यापित करेंगे 🙏", "success");
-      setTimeout(() => onClose(), 4000);
+      // REMOVED: Auto-close timeout so user has time to download the receipt
+      // setTimeout(() => onClose(), 4000);
     } catch {
       showToast("कुछ गलत हुआ, कृपया पुनः प्रयास करें", "error");
     }
@@ -1876,7 +1917,10 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
           </button>
 
           {success ? (
-            <div className="success-banner">
+            <div
+              className="success-banner"
+              style={{ textAlign: "center", padding: "1rem" }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -1892,13 +1936,56 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
               <p style={{ marginTop: ".4rem", fontSize: ".88rem" }}>
                 Admin द्वारा भुगतान सत्यापन के बाद
                 <br />
-                आपकी रसीद वेबसाइट पर दिखेगी।
+                आपकी रसीद पक्की हो जाएगी।
               </p>
-              <p
-                style={{ marginTop: ".5rem", fontSize: ".8rem", opacity: 0.7 }}
+
+              {/* --- NEW: DOWNLOAD BUTTON SECTION --- */}
+              <div
+                style={{
+                  background: "#FFF9EE",
+                  border: "2px dashed #D97706",
+                  padding: "1rem",
+                  borderRadius: "12px",
+                  margin: "1rem 0",
+                }}
               >
-                जय माता दी 🙏
-              </p>
+                <p
+                  style={{
+                    fontSize: ".75rem",
+                    fontWeight: 700,
+                    color: "#8B1A1A",
+                    marginBottom: ".6rem",
+                  }}
+                >
+                  अस्थाई डिजिटल रसीद (Provisional)
+                </p>
+                <button
+                  onClick={handleDownloadTempReceipt}
+                  className="receipt-btn"
+                  style={{ width: "100%", margin: 0 }}
+                >
+                  <Download size={16} /> रसीद डाउनलोड करें
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  width: "100%",
+                  padding: ".55rem",
+                  background: "#F3F4F6",
+                  color: "#374151",
+                  border: "none",
+                  borderRadius: "10px",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 600,
+                  fontSize: ".85rem",
+                  cursor: "pointer",
+                }}
+              >
+                बंद करें / Close
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
