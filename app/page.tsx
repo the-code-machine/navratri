@@ -42,17 +42,17 @@ import {
 } from "lucide-react";
 
 export type AlphaMode = "hindi" | "english";
-export type SeriesFilter = "all" | "A" | "B";
+export type SeriesFilter = "all" | "A" | "B" | "O"; // <-- Added "O" for Other
 export type TypeFilter = "all" | "Permanent" | "New";
 
 export interface Donor {
   id: string;
   series: string;
-  jyotiNo: number;
+  jyotiNo: number | string; // Updated to accept "Pending"
   nameHindi: string;
   nameEnglish: string;
   city: string;
-  receipt: number;
+  receipt: number | string; // Updated to accept "Pending"
   mobile: string;
   type: string;
   amount: number;
@@ -129,845 +129,20 @@ const DONORS_DEMO: Donor[] = [
     status: "Registered",
     notes: "",
   },
+  // Add an Other donation for demo
   {
-    id: "A2",
-    series: "A",
-    jyotiNo: 2,
-    nameHindi: "श्री वीरसिंह जी पंवार",
-    nameEnglish: "Shri Veersingh Panwar (Ex-MLA)",
-    city: "Kurwai",
-    receipt: 879,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A3",
-    series: "A",
-    jyotiNo: 3,
-    nameHindi: "श्रीमति नीता ब्रजेश सप्रे",
-    nameEnglish: "Smt. Neeta Brajesh Sapre (Sarpanch)",
-    city: "Kurwai",
-    receipt: 880,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A4",
-    series: "A",
-    jyotiNo: 4,
-    nameHindi: "श्री कृष्णा सरिता निखलेश सक्सैना",
-    nameEnglish: "Shri Krishna Nikhilesh Saxena",
-    city: "Kurwai",
-    receipt: 881,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A5",
-    series: "A",
-    jyotiNo: 5,
-    nameHindi: "श्रीमति वैजयन्ति चंचल",
-    nameEnglish: "Smt. Vaijayanti Chanchal (Teacher)",
-    city: "Kurwai",
-    receipt: 882,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A6",
-    series: "A",
-    jyotiNo: 6,
-    nameHindi: "श्रीमति रेखा जगदीश साहू",
-    nameEnglish: "Smt. Rekha Jagdish Sahu",
-    city: "Kurwai",
-    receipt: 883,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A7",
-    series: "A",
-    jyotiNo: 7,
-    nameHindi: "श्रीमति मायादेवी पंचम लाल सप्रे",
-    nameEnglish: "Smt. Mayadevi Panchamlal Sapre",
-    city: "Kurwai",
-    receipt: 884,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A8",
-    series: "A",
-    jyotiNo: 8,
-    nameHindi: "श्री अखिलेश साहू",
-    nameEnglish: "Shri Akhilesh Sahu (GM Railway)",
-    city: "Kurwai",
-    receipt: 885,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A9",
-    series: "A",
-    jyotiNo: 9,
-    nameHindi: "श्रीमति रमन राजकुमार तिवारी",
-    nameEnglish: "Smt. Raman Rajkumar Tiwari",
-    city: "Sihora",
-    receipt: 886,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A10",
-    series: "A",
-    jyotiNo: 10,
-    nameHindi: "श्रीमति कमला सीताराम चैबे",
-    nameEnglish: "Smt. Kamla Sitaram Chaube",
-    city: "Kurwai",
-    receipt: 887,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A11",
-    series: "A",
-    jyotiNo: 11,
-    nameHindi: "श्रीमति रजनी रामगोपाल रघुवंशी",
-    nameEnglish: "Smt. Rajni Ramgopal Raghuvanshi",
-    city: "Kurwai",
-    receipt: 888,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A12",
-    series: "A",
-    jyotiNo: 12,
-    nameHindi: "श्रीमती प्रियंका राहुल सिंहल",
-    nameEnglish: "Smt. Priyanka Rahul Singhal",
-    city: "Kurwai",
-    receipt: 889,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A13",
-    series: "A",
-    jyotiNo: 13,
-    nameHindi: "श्री राजनसिंह लोधी",
-    nameEnglish: "Shri Rajansingh Lodhi",
-    city: "Kurwai",
-    receipt: 890,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A14",
-    series: "A",
-    jyotiNo: 14,
-    nameHindi: "श्रीमती श्रद्धा मुकेश शर्मा",
-    nameEnglish: "Smt. Shraddha Mukesh Sharma",
-    city: "Bhopal",
-    receipt: 891,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A15",
-    series: "A",
-    jyotiNo: 15,
-    nameHindi: "श्री रामसहाय जडिया",
-    nameEnglish: "Shri Ramsahay Jadiya",
-    city: "Dudhawari",
-    receipt: 892,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A16",
-    series: "A",
-    jyotiNo: 16,
-    nameHindi: "श्रीमति इंद्रा साहू",
-    nameEnglish: "Smt. Indra Sahu",
-    city: "Sironj",
-    receipt: 893,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A17",
-    series: "A",
-    jyotiNo: 17,
-    nameHindi: "श्री धमेन्द्रसिंह दाॅगी",
-    nameEnglish: "Shri Dharmendrasingh Dangi",
-    city: "Karai Berkhedi",
-    receipt: 894,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A18",
-    series: "A",
-    jyotiNo: 18,
-    nameHindi: "श्री रंजीत गोलू पंथी",
-    nameEnglish: "Shri Ranjit / Golu Panthi",
-    city: "Kurwai",
-    receipt: 895,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A19",
-    series: "A",
-    jyotiNo: 19,
-    nameHindi: "श्रीमति रानी रामप्रकाश अहिरवार",
-    nameEnglish: "Smt. Rani Ramprakash Ahirwar",
-    city: "Kurwai",
-    receipt: 896,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A20",
-    series: "A",
-    jyotiNo: 20,
-    nameHindi: "श्रीमति सपना संतोष श्रीवास्तव",
-    nameEnglish: "Smt. Sapna Santosh Shrivastava",
-    city: "Kurwai",
-    receipt: 897,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A21",
-    series: "A",
-    jyotiNo: 21,
-    nameHindi: "श्री गणेश राम प्रजापति",
-    nameEnglish: "Shri Ganesh Ram Prajapati",
-    city: "Kurwai",
-    receipt: 898,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A22",
-    series: "A",
-    jyotiNo: 22,
-    nameHindi: "श्री मंयक श्रीवास्तव",
-    nameEnglish: "Shri Mayank Shrivastava",
-    city: "Kurwai",
-    receipt: 899,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A23",
-    series: "A",
-    jyotiNo: 23,
-    nameHindi: "श्री सौरभ श्रीवास्तव",
-    nameEnglish: "Shri Saurabh Shrivastava",
-    city: "Kurwai",
-    receipt: 900,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A24",
-    series: "A",
-    jyotiNo: 24,
-    nameHindi: "श्री शैलेन्द्रसिंह शेखपुर",
-    nameEnglish: "Shri Shailendrasingh Shekhpur",
-    city: "Shekhpur",
-    receipt: 901,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A25",
-    series: "A",
-    jyotiNo: 25,
-    nameHindi: "श्री राजपालसिंह दाॅगी",
-    nameEnglish: "Shri Rajpalsingh Dangi",
-    city: "Mandi Bamora",
-    receipt: 902,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A26",
-    series: "A",
-    jyotiNo: 26,
-    nameHindi: "श्री विनायक मुकेश शर्मा",
-    nameEnglish: "Shri Vinayak Mukesh Sharma",
-    city: "Bhopal",
-    receipt: 903,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A27",
-    series: "A",
-    jyotiNo: 27,
-    nameHindi: "श्री भगवतसिंह जाट",
-    nameEnglish: "Shri Bhagwatsingh Jat (CEO)",
-    city: "Kurwai",
-    receipt: 904,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A28",
-    series: "A",
-    jyotiNo: 28,
-    nameHindi: "श्री डाॅ. हरिओम शर्मा",
-    nameEnglish: "Dr. Hariom Sharma",
-    city: "Kurwai",
-    receipt: 905,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A29",
-    series: "A",
-    jyotiNo: 29,
-    nameHindi: "कु. प्रिया शर्मा",
-    nameEnglish: "Ku. Priya Sharma",
-    city: "Kurwai",
-    receipt: 906,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A30",
-    series: "A",
-    jyotiNo: 30,
-    nameHindi: "श्रीमति जयश्री नीलेश कुशवाह",
-    nameEnglish: "Smt. Jayashri Nilesh Kushwah",
-    city: "Kurwai",
-    receipt: 907,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A35",
-    series: "A",
-    jyotiNo: 35,
-    nameHindi: "श्रीमति संध्या अशोक सोनी",
-    nameEnglish: "Smt. Sandhya Ashok Soni",
-    city: "Kurwai",
-    receipt: 912,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A38",
-    series: "A",
-    jyotiNo: 38,
-    nameHindi: "श्रीमति दीपिका भानू निगम",
-    nameEnglish: "Smt. Deepika Bhanu Nigam",
-    city: "Indore",
-    receipt: 915,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A41",
-    series: "A",
-    jyotiNo: 41,
-    nameHindi: "श्री जितेन्द्रसिंह दांगी",
-    nameEnglish: "Shri Jitendrasingh Dangi (Sarpanch)",
-    city: "Kankar",
-    receipt: 918,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A44",
-    series: "A",
-    jyotiNo: 44,
-    nameHindi: "श्री ऋषिल मीनाक्षी जैन",
-    nameEnglish: "Shri Rushil / Meenakshi Jain",
-    city: "Kaikhora",
-    receipt: 921,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A47",
-    series: "A",
-    jyotiNo: 47,
-    nameHindi: "श्रीमति प्रीति आशुतोष शर्मा",
-    nameEnglish: "Smt. Preeti Ashutosh Sharma",
-    city: "Sironj",
-    receipt: 924,
-    mobile: "",
-    type: "New",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A48",
-    series: "A",
-    jyotiNo: 48,
-    nameHindi: "कु. गौरवी नेहा अंकित दुबे",
-    nameEnglish: "Ku. Gauravi / Neha / Ankit Dube",
-    city: "Indore",
-    receipt: 925,
-    mobile: "",
-    type: "New",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "A67",
-    series: "A",
-    jyotiNo: 67,
-    nameHindi: "श्री अंकित सप्रे",
-    nameEnglish: "Shri Ankit Sapre (Simba Construction)",
-    city: "Kurwai",
-    receipt: 944,
-    mobile: "",
-    type: "New",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B1",
-    series: "B",
+    id: "O1",
+    series: "O",
     jyotiNo: 1,
-    nameHindi: "श्रीमति ऊषा अनिल चैबे",
-    nameEnglish: "Smt. Usha Anil Chaube",
-    city: "Kurwai",
-    receipt: 526,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B2",
-    series: "B",
-    jyotiNo: 2,
-    nameHindi: "श्रीमति श्यामदेवी चैबे",
-    nameEnglish: "Smt. Shyamdevi Chaube",
-    city: "Kurwai",
-    receipt: 527,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B3",
-    series: "B",
-    jyotiNo: 3,
-    nameHindi: "कु. मैथिली विनीता चैबे",
-    nameEnglish: "Ku. Maithili / Vineeta Chaube",
-    city: "Kurwai",
-    receipt: 528,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B4",
-    series: "B",
-    jyotiNo: 4,
-    nameHindi: "श्रीमति सरोज कोरी",
-    nameEnglish: "Smt. Saroj Narayandas Kori (Teacher)",
-    city: "Kurwai",
-    receipt: 529,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B5",
-    series: "B",
-    jyotiNo: 5,
-    nameHindi: "कु. दिव्या कुशवाह",
-    nameEnglish: "Ku. Divya Kushwah",
-    city: "Kurwai",
-    receipt: 530,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B6",
-    series: "B",
-    jyotiNo: 6,
-    nameHindi: "श्रीमति उमा ओमप्रकाश शर्मा",
-    nameEnglish: "Smt. Uma Omprakash Sharma",
-    city: "Kurwai",
-    receipt: 531,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B7",
-    series: "B",
-    jyotiNo: 7,
-    nameHindi: "श्री विशनसिंह राजपूत",
-    nameEnglish: "Shri Vishansingh Rajput",
-    city: "Vishanpur",
-    receipt: 532,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B8",
-    series: "B",
-    jyotiNo: 8,
-    nameHindi: "श्री रोहित सुखराज प्रजापति",
-    nameEnglish: "Shri Rohit Sukhraj Prajapati",
-    city: "Kurwai",
-    receipt: 533,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B9",
-    series: "B",
-    jyotiNo: 9,
-    nameHindi: "श्री सुनील मोतीलाल प्रजापति",
-    nameEnglish: "Shri Sunil Motilal Prajapati",
-    city: "Kurwai",
-    receipt: 534,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B10",
-    series: "B",
-    jyotiNo: 10,
-    nameHindi: "श्रीमति निर्मला खत्री",
-    nameEnglish: "Smt. Nirmala Khatri",
-    city: "Kurwai",
-    receipt: 535,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B11",
-    series: "B",
-    jyotiNo: 11,
-    nameHindi: "श्रीमती वैष्णवी शर्मा",
-    nameEnglish: "Smt. Vaishnavi Sharma",
-    city: "Ashtha",
-    receipt: 643,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B12",
-    series: "B",
-    jyotiNo: 12,
-    nameHindi: "श्रीमति नम्रता अंशुल यादव",
-    nameEnglish: "Smt. Namrata Anshul Yadav",
-    city: "Kurwai",
-    receipt: 536,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B48",
-    series: "B",
-    jyotiNo: 48,
-    nameHindi: "श्री मारूति",
-    nameEnglish: "Shri Marruti",
-    city: "Kurwai",
-    receipt: 571,
-    mobile: "9981139984",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B49",
-    series: "B",
-    jyotiNo: 49,
-    nameHindi: "श्री गोविन्द शरण सोनी",
-    nameEnglish: "Shri Govind Sharan Soni",
-    city: "Kurwai",
-    receipt: 572,
-    mobile: "8085867267",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B50",
-    series: "B",
-    jyotiNo: 50,
-    nameHindi: "श्रीमति द्रोपती नरेन्द्र पंथी",
-    nameEnglish: "Smt. Dropati Narendra Panthi",
-    city: "Kurwai",
-    receipt: 799,
-    mobile: "9993159360",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B60",
-    series: "B",
-    jyotiNo: 60,
-    nameHindi: "श्री सुरेन्द्रसिंह ठाकुर",
-    nameEnglish: "Shri Surendrasingh Thakur",
-    city: "Mohli",
-    receipt: 582,
-    mobile: "8959259956",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B100",
-    series: "B",
-    jyotiNo: 100,
-    nameHindi: "श्री निखिल श्यामलाल सप्रे",
-    nameEnglish: "Shri Nikhil Shyamlal Sapre",
-    city: "Kurwai",
-    receipt: 619,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B150",
-    series: "B",
-    jyotiNo: 150,
-    nameHindi: "श्रीमति गेंदावाई ईश्वरी पंथी",
-    nameEnglish: "Smt. Gendawai Ishwari Panthi",
-    city: "Kurwai",
-    receipt: 668,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B222",
-    series: "B",
-    jyotiNo: 222,
-    nameHindi: "डाॅ. सुरूचि कुशवाह",
-    nameEnglish: "Dr. Suruchi Kushwah (Secretary)",
-    city: "Kurwai",
-    receipt: 726,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B271",
-    series: "B",
-    jyotiNo: 271,
-    nameHindi: "श्री अवतारसिंह मूडरी",
-    nameEnglish: "Shri Avtarsingh Mudri",
-    city: "Mudri",
-    receipt: 791,
-    mobile: "9617424216",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B300",
-    series: "B",
-    jyotiNo: 300,
-    nameHindi: "श्री राहुल यादव",
-    nameEnglish: "Shri Rahul Yadav",
-    city: "Mandi Bamora",
-    receipt: 824,
-    mobile: "",
-    type: "New",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B351",
-    series: "B",
-    jyotiNo: 351,
-    nameHindi: "श्री रघुवरदयाल साहू",
-    nameEnglish: "Shri Raghuwarduyal Sahu",
-    city: "Kurwai",
-    receipt: 875,
-    mobile: "",
-    type: "Permanent",
-    amount: 0,
-    status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B361",
-    series: "B",
-    jyotiNo: 361,
-    nameHindi: "श्री बाबूलाल पंथी",
-    nameEnglish: "Shri Baboolal Panthi (Singer)",
+    nameHindi: "श्री दानवीर जी",
+    nameEnglish: "Shri Daanveer Ji",
     city: "Bhopal",
-    receipt: 960,
-    mobile: "",
+    receipt: 1001,
+    mobile: "9876543210",
     type: "New",
-    amount: 0,
+    amount: 5100,
     status: "Registered",
-    notes: "",
-  },
-  {
-    id: "B367",
-    series: "B",
-    jyotiNo: 367,
-    nameHindi: "श्रीमति शीला पवन मेवाड़ा",
-    nameEnglish: "Smt. Sheela Pawan Mewada",
-    city: "Ashtha",
-    receipt: 966,
-    mobile: "",
-    type: "New",
-    amount: 0,
-    status: "Registered",
-    notes: "",
+    notes: "Nirmaan",
   },
 ];
 
@@ -1219,7 +394,7 @@ async function openDigitalReceipt(donor: Donor): Promise<void> {
   <div class="sig-row">
     <div class="sig-left">
       <div style="${donor.jyotiNo === "Pending" ? "font-size:.65rem; color:#888" : ""}">ज्योति क्र. &nbsp;<strong>${donor.jyotiNo}</strong></div>
-      <div style="margin-top:.2rem">ज्योति राशि — <strong>${amtStr || "—"}</strong></div>
+      <div style="margin-top:.2rem">दान राशि — <strong>${amtStr || "—"}</strong></div>
     </div>
     <div class="sig-right">
       ${
@@ -1622,11 +797,23 @@ function DonorCard({ donor, onSelect, delay = 0 }: DonorCardProps) {
             </>
           )}
         </span>
+
+        {/* NEW: O Series tag style */}
         <span
-          className={`tag ${donor.series === "A" ? "tag-serA" : "tag-serB"}`}
+          className={`tag ${donor.series === "A" ? "tag-serA" : donor.series === "B" ? "tag-serB" : "tag-serO"}`}
+          style={
+            donor.series === "O"
+              ? { background: "#F3E8FF", color: "#7E22CE" }
+              : {}
+          }
         >
-          {donor.series === "A" ? "Ghee (A)" : "Tail New (B)"}
+          {donor.series === "A"
+            ? "Ghee (A)"
+            : donor.series === "B"
+              ? "Tail New (B)"
+              : "अन्य (O)"}
         </span>
+
         {effectiveAmt > 0 && (
           <span
             className="tag tag-perm"
@@ -1685,7 +872,11 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
     [
       <AlignJustify key="s" size={13} color="#A87D4A" />,
       "सूची",
-      donor.series === "A" ? "Ghee (A)" : "Tail New (B)",
+      donor.series === "A"
+        ? "Ghee (A)"
+        : donor.series === "B"
+          ? "Tail New (B)"
+          : "अन्य (Other)", // Updated
     ],
     [
       <Star key="st" size={13} color="#A87D4A" />,
@@ -1718,8 +909,13 @@ function DonorModal({ donor, onClose }: { donor: Donor; onClose: () => void }) {
           <Flame size={26} color="#fff" />
         </div>
         <div className="modal-jno">
-          ज्योति संख्या {donor.jyotiNo} ·{" "}
-          {donor.series === "A" ? "Ghee" : "Tail New"} Series
+          ज्योति/रसीद संख्या {donor.jyotiNo} ·{" "}
+          {donor.series === "A"
+            ? "Ghee"
+            : donor.series === "B"
+              ? "Tail New"
+              : "Other"}{" "}
+          Series
         </div>
         <h2 className="modal-name">{donor.nameHindi}</h2>
         <p className="modal-eng">{donor.nameEnglish}</p>
@@ -1838,8 +1034,14 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
   const handleDownloadTempReceipt = () => {
     const tempDonor: Donor = {
       id: "temp",
-      series: fd.category === "ghee-jyoti" ? "A" : "B",
-      jyotiNo: "Pending" as unknown as number, // Typescript workaround for the temporary receipt
+      // Determine Series based on category: Ghee = 'A', Tel = 'B', everything else is 'O'
+      series:
+        fd.category === "ghee-jyoti"
+          ? "A"
+          : fd.category === "tel-jyoti"
+            ? "B"
+            : "O",
+      jyotiNo: "Pending" as unknown as number,
       nameHindi: fd.name,
       nameEnglish: fd.name,
       city: fd.city,
@@ -1892,8 +1094,6 @@ function DonationForm({ onClose, showToast }: DonationFormProps) {
       }
       setSuccess(true);
       showToast("दान पंजीकरण सफल! Admin जल्द सत्यापित करेंगे 🙏", "success");
-      // REMOVED: Auto-close timeout so user has time to download the receipt
-      // setTimeout(() => onClose(), 4000);
     } catch {
       showToast("कुछ गलत हुआ, कृपया पुनः प्रयास करें", "error");
     }
@@ -2574,12 +1774,19 @@ export default function Home() {
 
   const filtered = useMemo<Donor[]>(() => {
     return donors.filter((d) => {
-      if (!d?.nameHindi || !d?.nameEnglish) return false;
+      // 1. अगर हिंदी और इंग्लिश दोनों नाम खाली हैं, तभी हटाओ। (|| की जगह && कर दिया)
+      if (!d?.nameHindi && !d?.nameEnglish) return false;
+
+      // 2. शीट के सबसे नीचे जो "TOTAL DONORS: 368" आ रहा है, उसे कार्ड में मत दिखाओ
+      if (d?.nameHindi?.includes("TOTAL DONORS")) return false;
+
       if (searchName) {
         const q = searchName.trim().toLowerCase();
         const words = q.split(/\s+/).filter(Boolean);
-        const nh = d.nameHindi.toLowerCase();
-        const ne = d.nameEnglish.toLowerCase();
+        // Fallback to empty string to avoid errors if nameEnglish is undefined
+        const nh = (d.nameHindi || "").toLowerCase();
+        const ne = (d.nameEnglish || "").toLowerCase();
+
         const direct = nh.includes(q) || ne.includes(q);
         const allWords =
           words.length > 1
@@ -2587,17 +1794,18 @@ export default function Home() {
             : false;
         if (!direct && !allWords) return false;
       }
+
       if (searchMobile && !d.mobile.includes(searchMobile.trim())) return false;
       if (searchReceipt && !String(d.receipt).includes(searchReceipt.trim()))
         return false;
       if (series !== "all" && d.series !== series) return false;
       if (type !== "all" && d.type !== type) return false;
+
       if (alpha) {
-        if (alphaMode === "hindi" && !d.nameHindi.includes(alpha)) return false;
-        if (
-          alphaMode === "english" &&
-          !d.nameEnglish.toUpperCase().includes(alpha)
-        )
+        const nh = d.nameHindi || "";
+        const ne = d.nameEnglish || "";
+        if (alphaMode === "hindi" && !nh.includes(alpha)) return false;
+        if (alphaMode === "english" && !ne.toUpperCase().includes(alpha))
           return false;
       }
       return true;
@@ -2647,10 +1855,12 @@ export default function Home() {
     if (e.key === "Enter") scrollToResults();
   };
 
+  // --- UPDATED: Series Options filter to show "Other" ---
   const seriesOpts: { v: SeriesFilter; l: string }[] = [
     { v: "all", l: "सभी" },
     { v: "A", l: "Ghee (A)" },
     { v: "B", l: "Tail New (B)" },
+    { v: "O", l: "अन्य (Other)" },
   ];
   const typeOpts: { v: TypeFilter; l: string }[] = [
     { v: "all", l: "सभी" },
